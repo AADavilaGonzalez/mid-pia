@@ -1,0 +1,22 @@
+[project]
+name = "mid-pia"
+version = "0.1.0"
+description = "Mid compiler"
+readme = "README.md"
+authors = [
+    { name = "Aldo Davila", email = "aldoda2003gp5@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "llvmlite>=0.50.0",
+]
+
+[project.scripts]
+mid = "mid:main"
+
+[tool.uv.build-backend]
+module-name = "mid"
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"
