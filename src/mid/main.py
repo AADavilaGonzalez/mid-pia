@@ -1,4 +1,6 @@
 import argparse
+import sys
+
 
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Mid", add_help=True)
@@ -48,25 +50,26 @@ def create_parser() -> argparse.ArgumentParser:
 
 if __name__ == "__main__":
     from pprint import pformat
-    from mid.frontend import lexer, parser, analyzer
+
     from mid.backend import codegen
+    from mid.frontend import analyzer, lexer, parser
 
     args = create_parser().parse_args()
-    def read() -> str: 
+    def read() -> str:
         try:
             with open(args.input, "r") as input_file:
                 source = input_file.read()
         except FileNotFoundError as error:
             print(f"Error: File '{error.filename}' does not exist")
-            exit(1)
+            sys.exit(1)
         except PermissionError as error:
             print(f"Error: User lacks read permision for file '{error.filename}'")
-            exit(1)
-        except Exception as e:
+            sys.exit(1)
+        except RuntimeError as e:
             print(f"Error: Unexpected error while trying to read file '{args.input}'")
             print("...")
             print(e)
-            exit(1)
+            sys.exit(1)
         return source
     def write(content: str):
         try:
@@ -74,18 +77,18 @@ if __name__ == "__main__":
                 output_file.write(content)
         except PermissionError as error:
             print(f"Error: User lacks write permision for file '{error.filename}'")
-            exit(1)
-        except Exception as e:
+            sys.exit(1)
+        except RuntimeError as e:
             print(f"Error: Unexpected error while trying to write to file '{args.input}'")
             print("...")
             print(e)
-            exit(1)
+            sys.exit(1)
     def attempt_exit(obj, flag: bool, fmt):
         if flag:
             output = fmt(obj)
             if args.stdout: print(output)
             else: write(output)
-            exit(0)
+            sys.exit(0)
 
     source = read()
 
@@ -101,5 +104,4 @@ if __name__ == "__main__":
     mod = codegen(ast, st)
     attempt_exit(mod, args.ir, str)
 
-    raise NotImplemented
-
+    raise NotImplementedError
