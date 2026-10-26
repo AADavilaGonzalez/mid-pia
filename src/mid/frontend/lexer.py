@@ -6,7 +6,7 @@ from mid.types.token import Token, TokenType
 from mid.types.util import Pos
 
 
-_KEYWORDS = {
+KEYWORDS = {
     "fn": TokenType.FUNCTION,
     "as": TokenType.AS,
     "return": TokenType.RETURN,
@@ -19,60 +19,37 @@ _KEYWORDS = {
     "false": TokenType.FALSE,
 }
 
-_OPERATORS = {
-    "(": TokenType.LPAREN,
-    ")": TokenType.RPAREN,
-    "{": TokenType.LBRACE,
-    "}": TokenType.RBRACE,
-    "[": TokenType.LBRACKET,
-    "]": TokenType.RBRACKET,
-    ",": TokenType.COMMA,
-    ";": TokenType.SEMICOLON,
-    "^": TokenType.CARET,
-    ":": TokenType.COLON,
-    ":=": TokenType.COLON_EQUAL,
-    "+": TokenType.PLUS,
-    "+=": TokenType.PLUS_EQUAL,
-    "-": TokenType.MINUS,
-    "-=": TokenType.MINUS_EQUAL,
-    "->": TokenType.ARROW,
-    "*": TokenType.STAR,
-    "*=": TokenType.STAR_EQUAL,
-    "/": TokenType.SLASH,
-    "/=": TokenType.SLASH_EQUAL,
-    "%": TokenType.PERCENT,
-    "%=": TokenType.PERCENT_EQUAL,
-    ">": TokenType.GREATER,
-    ">=": TokenType.GREATER_EQUAL,
-    "<": TokenType.LESSER,
-    "<=": TokenType.LESSER_EQUAL,
-    "!": TokenType.BANG,
-    "!=": TokenType.BANG_EQUAL,
-    "&": TokenType.AMP,
-    "&&": TokenType.AMPAMP,
-    "||": TokenType.BARBAR,
-    "=": TokenType.EQUAL,
-    "==": TokenType.EQUAL_EQUAL,
-    ".": TokenType.DOT,
-    "..": TokenType.DOTDOT,
+OPERATORS = {
+    "(": TokenType.LPAREN,      ")": TokenType.RPAREN,      "{": TokenType.LBRACE,
+    "}": TokenType.RBRACE,      "[": TokenType.LBRACKET,    "]": TokenType.RBRACKET,
+    ",": TokenType.COMMA,       ";": TokenType.SEMICOLON,   "^": TokenType.CARET,
+    ":": TokenType.COLON,       ":=": TokenType.COLON_EQUAL, "+": TokenType.PLUS,
+    "+=": TokenType.PLUS_EQUAL, "-": TokenType.MINUS,       "-=": TokenType.MINUS_EQUAL,
+    "->": TokenType.ARROW,      "*": TokenType.STAR,        "*=": TokenType.STAR_EQUAL,
+    "/": TokenType.SLASH,       "/=": TokenType.SLASH_EQUAL, "%": TokenType.PERCENT,
+    "%=": TokenType.PERCENT_EQUAL, ">": TokenType.GREATER,  ">=": TokenType.GREATER_EQUAL,
+    "<": TokenType.LESSER,      "<=": TokenType.LESSER_EQUAL, "!": TokenType.BANG,
+    "!=": TokenType.BANG_EQUAL, "&": TokenType.AMP,         "&&": TokenType.AMP_AMP,
+    "||": TokenType.BAR_BAR,    "=": TokenType.EQUAL,       "==": TokenType.EQUAL_EQUAL,
+    ".": TokenType.DOT,         "..": TokenType.DOT_DOT,
 }
 
-_ESCAPES = {
+ESCAPES = {
     "n": "\n", "t": "\t", "b": "\b", "r": "\r",
     "a": "\a", "f": "\f", "v": "\v", "0": "\0", "\\": "\\",
 }
-_MAX_INTEGER = str(2**64 - 1)
+MAX_INTEGER = str(2**64 - 1)
 
 
-def _is_digit(char: str) -> bool:
+def is_digit(char: str) -> bool:
     return "0" <= char <= "9"
 
 
-def _is_alpha(char: str) -> bool:
+def is_alpha(char: str) -> bool:
     return "a" <= char <= "z" or "A" <= char <= "Z" or char == "_"
 
 
-class _Lexer:
+class Lexer:
     def __init__(self, source: str):
         self.source = source
         self.current = 0
@@ -81,11 +58,11 @@ class _Lexer:
         self.start = Pos(0, 1, 1)
         self.tokens: list[Token] = []
 
-    def _peek(self, offset: int = 0) -> str:
+    def peek(self, offset: int = 0) -> str:
         index = self.current + offset
         return self.source[index] if index < len(self.source) else ""
 
-    def _advance(self) -> str:
+    def advance(self) -> str:
         char = self.source[self.current]
         self.current += 1
         if char == "\n":
@@ -95,36 +72,37 @@ class _Lexer:
             self.col += 1
         return char
 
-    def _emit(self, token_type: TokenType, value: None | int | float | str = None):
+    def emit(self, token_type: TokenType, value: None | int | float | str = None):
         lexeme = self.source[self.start.idx:self.current]
         self.tokens.append(Token(lexeme, token_type, self.start, value))
 
-    def _error(self, code: int, message: str):
+    def error(self, code: int, message: str):
         print(
             f"LexerError({code}) [line:{self.start.line}, col:{self.start.col}]: {message}",
             file=sys.stderr,
         )
-        self._emit(TokenType.ERROR)
+        self.emit(TokenType.ERROR)
 
-    def _identifier(self):
-        while _is_alpha(self._peek()) or _is_digit(self._peek()):
-            self._advance()
+    def identifier(self):
+        while is_alpha(self.peek()) or is_digit(self.peek()):
+            self.advance()
         lexeme = self.source[self.start.idx:self.current]
-        token_type = _KEYWORDS.get(lexeme, TokenType.IDENT)
+        token_type = KEYWORDS.get(lexeme, TokenType.IDENT)
         value = None
         if token_type in (TokenType.TRUE, TokenType.FALSE):
             value = int(token_type == TokenType.TRUE)
-        self._emit(token_type, value)
+        self.emit(token_type, value)
 
-    def _number(self, has_dot: bool):
-        while _is_digit(self._peek()):
-            self._advance()
+    def number(self):
+        has_dot = False
+        while is_digit(self.peek()):
+            self.advance()
         # A decimal point requires a following digit; never consume the '..' slice operator.
-        if not has_dot and self._peek() == "." and _is_digit(self._peek(1)):
+        if not has_dot and self.peek() == "." and is_digit(self.peek(1)):
             has_dot = True
-            self._advance()
-            while _is_digit(self._peek()):
-                self._advance()
+            self.advance()
+            while is_digit(self.peek()):
+                self.advance()
 
         lexeme = self.source[self.start.idx:self.current]
         if has_dot:
@@ -133,44 +111,44 @@ class _Lexer:
             except (OverflowError, ValueError):
                 value = math.inf
             if not math.isfinite(value):
-                self._error(6, "Float literal is too large for f32")
+                self.error(6, "Float literal is too large for f32")
             else:
-                self._emit(TokenType.FLOAT, value)
+                self.emit(TokenType.FLOAT, value)
             return
 
         # Check before int() so arbitrarily long input cannot exceed Python's digit limit.
         digits = lexeme.lstrip("0") or "0"
-        if len(digits) > len(_MAX_INTEGER) or (
-            len(digits) == len(_MAX_INTEGER) and digits > _MAX_INTEGER
+        if len(digits) > len(MAX_INTEGER) or (
+            len(digits) == len(MAX_INTEGER) and digits > MAX_INTEGER
         ):
-            self._error(3, "Integer literal is too large for u64")
+            self.error(3, "Integer literal is too large for u64")
         else:
-            self._emit(TokenType.INTEGER, int(digits))
+            self.emit(TokenType.INTEGER, int(digits))
 
-    def _quoted(self, quote: str):
+    def quoted(self, quote: str):
         value: list[str] = []
         error: tuple[int, str] | None = None
-        while self._peek() and self._peek() not in ("\n", "\r"):
-            char = self._advance()
+        while self.peek() and self.peek() not in ("\n", "\r"):
+            char = self.advance()
             if char == quote:
                 if error is not None:
-                    self._error(*error)
+                    self.error(*error)
                 elif quote == "'" and len(value) != 1:
-                    self._error(4, "Char literal must contain exactly one ASCII character")
+                    self.error(4, "Char literal must contain exactly one ASCII character")
                 elif quote == "'":
-                    self._emit(TokenType.CHAR, ord(value[0]))
+                    self.emit(TokenType.CHAR, ord(value[0]))
                 else:
-                    self._emit(TokenType.STRING, "".join(value))
+                    self.emit(TokenType.STRING, "".join(value))
                 return
 
             if char == "\\":
-                if not self._peek() or self._peek() in ("\n", "\r"):
+                if not self.peek() or self.peek() in ("\n", "\r"):
                     break
-                escaped = self._advance()
+                escaped = self.advance()
                 if escaped == quote:
                     value.append(quote)
-                elif escaped in _ESCAPES:
-                    value.append(_ESCAPES[escaped])
+                elif escaped in ESCAPES:
+                    value.append(ESCAPES[escaped])
                 elif error is None:
                     error = (5, f"Invalid escape sequence {('\\' + escaped)!r}")
             elif " " <= char <= "~":
@@ -181,38 +159,38 @@ class _Lexer:
 
         # Leave the line break for scan(); recovery must not swallow the next line.
         if quote == "'":
-            self._error(4, "Unterminated char literal")
+            self.error(4, "Unterminated char literal")
         else:
-            self._error(2, "Unterminated string literal")
+            self.error(2, "Unterminated string literal")
 
     def scan(self) -> list[Token]:
         while self.current < len(self.source):
             self.start = Pos(self.current, self.line, self.col)
-            char = self._advance()
+            char = self.advance()
             if char in " \t\r\n":
                 continue
-            if char == "/" and self._peek() == "/":
-                while self._peek() and self._peek() != "\n":
-                    self._advance()
+            if char == "/" and self.peek() == "/":
+                while self.peek() and self.peek() != "\n":
+                    self.advance()
                 continue
-            if _is_alpha(char):
-                self._identifier()
-            elif _is_digit(char) or (char == "." and _is_digit(self._peek())):
-                self._number(has_dot=char == ".")
+            if is_alpha(char):
+                self.identifier()
+            elif is_digit(char):
+                self.number()
             elif char in ("'", '"'):
-                self._quoted(char)
+                self.quoted(char)
             else:
-                operator = char + self._peek()
-                if len(operator) == 2 and operator in _OPERATORS:
-                    self._advance()
-                    self._emit(_OPERATORS[operator])
-                elif char in _OPERATORS:
-                    self._emit(_OPERATORS[char])
+                operator = char + self.peek()
+                if len(operator) == 2 and operator in OPERATORS:
+                    self.advance()
+                    self.emit(OPERATORS[operator])
+                elif char in OPERATORS:
+                    self.emit(OPERATORS[char])
                 else:
-                    self._error(1, f"Unexpected character {char!r}")
+                    self.error(1, f"Unexpected character {char!r}")
 
         self.start = Pos(self.current, self.line, self.col)
-        self._emit(TokenType.EOF)
+        self.emit(TokenType.EOF)
         return self.tokens
 
 
@@ -223,8 +201,11 @@ def lexer(source: str) -> list[Token]:
     values are u64-range Python ints, f32-rounded floats, ASCII character codes,
     decoded ASCII strings, and 0/1 for booleans. Other tokens have no value.
 
-    Agreed refinements to the draft specification: decimal points require a
-    following digit, signs are separate tokens, and quoted literals are limited
-    to printable ASCII plus supported escapes. Float overflow uses LexerError(6).
+    Agreed refinements to the draft specification: decimal points require
+    digits on both sides, signs are separate tokens, and quoted literals are
+    limited to printable ASCII plus supported escapes. Float overflow uses
+    LexerError(6).
     """
-    return _Lexer(source).scan()
+    return Lexer(source).scan()
+
+__all__ = ["lexer"]

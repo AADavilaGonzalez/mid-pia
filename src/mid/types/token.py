@@ -35,12 +35,12 @@ class TokenType(Enum):
     BANG = auto()
     BANG_EQUAL = auto()
     AMP = auto()
-    AMPAMP = auto()
-    BARBAR = auto()
+    AMP_AMP = auto()
+    BAR_BAR = auto()
     EQUAL = auto()
     EQUAL_EQUAL =  auto()
     DOT = auto()
-    DOTDOT = auto()
+    DOT_DOT = auto()
     FUNCTION = auto()
     AS = auto()
     RETURN = auto()
@@ -73,7 +73,7 @@ class Token:
     def end(self) -> Pos:
         pos = copy(self.pos)
         pos.idx += len(self.lexeme)
-        pos.line += len(self.lexeme)
+        pos.col += len(self.lexeme)
         return pos
 
     def span(self) -> Span:

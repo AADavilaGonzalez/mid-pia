@@ -44,6 +44,6 @@ fn i32_to_str(x: i32, buff: []u8) -> []u8 {
 fn main() {
     buff: [32]byte;
     x := 2 + 2;
-    write("2 + 2 is: ");
-    write(i32_to_str(buff[..], x));
+    print("2 + 2 is: ");
+    print(i32_to_str(buff[..], x));
 }
