@@ -1,0 +1,44 @@
+Resultados de las pruebas del lexer - Compilador Mid
+Fecha: 2026-10-30 09:02 CST
+Rama: beto/lexer
+Commit probado: d4045d6
+Python: Python 3.14.10
+Comando: PYTHONPATH=src uv run pytest -v
+
+============================= test session starts ==============================
+collecting ... collected 32 items
+
+tests/test_lexer.py::test_basic_program PASSED                           [  3%]
+tests/test_lexer.py::test_all_operators PASSED                           [  6%]
+tests/test_lexer.py::test_longest_operator_match_without_spaces PASSED   [  9%]
+tests/test_lexer.py::test_keywords_and_booleans PASSED                   [ 12%]
+tests/test_lexer.py::test_identifiers_are_ascii_and_case_sensitive PASSED [ 15%]
+tests/test_lexer.py::test_comments_whitespace_and_positions PASSED       [ 18%]
+tests/test_lexer.py::test_comment_does_not_emit_tokens PASSED            [ 21%]
+tests/test_lexer.py::test_block_comments_are_not_supported PASSED        [ 25%]
+tests/test_lexer.py::test_empty_and_whitespace_only_input PASSED         [ 28%]
+tests/test_lexer.py::test_decimal_and_dot_disambiguation PASSED          [ 31%]
+tests/test_lexer.py::test_integer_values_and_signs PASSED                [ 34%]
+tests/test_lexer.py::test_leading_zeroes_do_not_trigger_python_integer_limit PASSED [ 37%]
+tests/test_lexer.py::test_integer_overflow_recovers_after_digits PASSED  [ 40%]
+tests/test_lexer.py::test_float_values_are_rounded_to_f32 PASSED         [ 43%]
+tests/test_lexer.py::test_large_float_is_not_treated_as_integer_overflow PASSED [ 46%]
+tests/test_lexer.py::test_float_overflow_recovers PASSED                 [ 50%]
+tests/test_lexer.py::test_float_underflow_rounds_to_zero PASSED          [ 53%]
+tests/test_lexer.py::test_largest_finite_f32 PASSED                      [ 56%]
+tests/test_lexer.py::test_numeric_separators_and_exponents_are_not_consumed PASSED [ 59%]
+tests/test_lexer.py::test_character_values PASSED                        [ 62%]
+tests/test_lexer.py::test_all_common_escapes_in_both_literal_types PASSED [ 65%]
+tests/test_lexer.py::test_strings_preserve_lexemes_and_decode_values PASSED [ 68%]
+tests/test_lexer.py::test_escaped_newlines_do_not_change_source_line_positions PASSED [ 71%]
+tests/test_lexer.py::test_comment_markers_inside_strings_are_text PASSED [ 75%]
+tests/test_lexer.py::test_invalid_characters_emit_errors_and_continue PASSED [ 78%]
+tests/test_lexer.py::test_invalid_character_literals_recover_at_closing_quote PASSED [ 81%]
+tests/test_lexer.py::test_invalid_escapes_recover_at_unescaped_quote PASSED [ 84%]
+tests/test_lexer.py::test_non_ascii_and_raw_control_characters_in_strings PASSED [ 87%]
+tests/test_lexer.py::test_unterminated_literals_do_not_swallow_next_line PASSED [ 90%]
+tests/test_lexer.py::test_unterminated_literals_at_eof PASSED            [ 93%]
+tests/test_lexer.py::test_multiple_calls_have_independent_state PASSED   [ 96%]
+tests/test_lexer.py::test_diagnostics_only_go_to_stderr PASSED           [100%]
+
+============================== 32 passed in 0.03s ==============================
