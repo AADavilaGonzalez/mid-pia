@@ -74,7 +74,7 @@ def main():
 
     def write(content: str):
         try:
-            with open(args.output, "r") as output_file:
+            with open(args.output, "w") as output_file:
                 output_file.write(content)
         except PermissionError as error:
             print(f"Error: User lacks write permision for file '{error.filename}'")
