@@ -1,3 +1,9 @@
+# Project Specific
+build/
+runtime/build/
+runtime/*.a
+runtime/*.lib
+
 # Python-generated files
 __pycache__/
 *.py[oc]

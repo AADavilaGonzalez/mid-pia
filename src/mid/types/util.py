@@ -1,13 +1,12 @@
 from dataclasses import dataclass
 
-
-@dataclass(slots=True)
+@dataclass
 class Pos:
     idx: int
     line: int
     col: int
 
-@dataclass(slots=True)
+@dataclass
 class Span:
     start: Pos
     end: Pos

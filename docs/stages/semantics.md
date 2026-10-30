@@ -1,3 +1,0 @@
-# Mid Language Semantics
-
-## 
