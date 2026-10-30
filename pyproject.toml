@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-mid = "mid:main"
+mid = "mid.main:main"
 
 [tool.uv.build-backend]
 module-name = "mid"

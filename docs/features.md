@@ -4,7 +4,6 @@
 - pointers
 - arrays
 - slices
-- compount types
 - stack memory allocation
 - type casting between primitives
 - type composition

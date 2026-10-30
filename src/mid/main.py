@@ -3,7 +3,7 @@ import sys
 
 
 def create_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Mid", add_help=True)
+    parser = argparse.ArgumentParser(description="Mid Compiler")
 
     parser.add_argument("input", type=str, help="Input source file")
     parser.add_argument(
@@ -48,7 +48,7 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
-if __name__ == "__main__":
+def main():
     from pprint import pformat
 
     from mid.backend import codegen
@@ -71,6 +71,7 @@ if __name__ == "__main__":
             print(e)
             sys.exit(1)
         return source
+
     def write(content: str):
         try:
             with open(args.output, "r") as output_file:
@@ -83,6 +84,7 @@ if __name__ == "__main__":
             print("...")
             print(e)
             sys.exit(1)
+
     def attempt_exit(obj, flag: bool, fmt):
         if flag:
             output = fmt(obj)
