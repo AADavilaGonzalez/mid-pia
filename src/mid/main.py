@@ -1,8 +1,11 @@
 import argparse
 import sys
+import tempfile
+import subprocess
 
 from mid import lex, parse, analyze, generate_ir
 from mid.types.errors import Error
+from mid.util import LIB_FILE
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Mid Compiler")
@@ -10,6 +13,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-o", "--output",
         default="a.out",
         help="Output file name (default: a.out)",
+    )
+    parser.add_argument("-ir",
+        action="store_true",
+        help="Emit llvm-ir instead of executable"
     )
     return parser.parse_args()
 
@@ -33,7 +40,15 @@ def main():
             print(error)
         sys.exit(1)
 
-    module = generate_ir(ast)
-    with open(args.output, "w") as f:
-        f.write(module)
+    ir = generate_ir(ast)
+    if args.ir:
+        with open(args.output, "w") as f:
+            f.write(ir)
+    else:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".ll") as tmp:
+            tmp.write(ir)
+            tmp.flush()
+            subprocess.run(
+                ["clang", tmp.name, str(LIB_FILE), "-o", args.output],
+                check=False)
     sys.exit(0)

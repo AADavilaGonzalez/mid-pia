@@ -56,7 +56,7 @@ def parse(tokens: list[Token]) -> tuple[AST, list[ParserError]]:
 
         def lookahead():
             token = peek(1)
-            match token:
+            match token.type:
                 case TokenType.COLON: stmts.append(parse_decl())
                 case TokenType.EQUAL: stmts.append(parse_assign())
                 case _: raise expected("':' or '='", token)
