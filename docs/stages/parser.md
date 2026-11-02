@@ -56,9 +56,9 @@ logic_or            ::= logic_and { "||" logic_and } ;
 
 logic_and           ::= equality { "&&" equality } ;
 
-equality             ::= comparison { ( "==" | "!=" ) comparison } ;
+equality            ::= comparison { ( "==" | "!=" ) comparison } ;
 
-comparison           ::= term { ( ">" | "<" | ">=" | "<=" ) term } ;
+comparison          ::= term { ( ">" | "<" | ">=" | "<=" ) term } ;
 
 term                ::= factor { ( "+" | "-" ) factor } ;
 
@@ -68,19 +68,22 @@ cast                ::= unary { "as" type } ;
 
 unary               ::= ( "!" | "-" | "&" ) unary | postfix ;
 
-postfix             ::= primary { call | idx | "^" } ;
+postfix             ::= primary { call | idx | field | "^" } ;
 
-primary             ::= IDENT | INTEGER | FLOAT | CHAR | STRING | "(" expression ")" ;
+primary             ::= IDENT | INTEGER | FLOAT | CHAR | STRING
+                      | "true" | "false" | "(" expression ")" ;
 
-call                ::= "(" [ expression { "," expression } [","] ] ")";
+call                ::= "(" [ expression { "," expression } [","] ] ")" ;
 
 idx                 ::= "[" expression "]"
+                      | "[" [ expression ] ".." [ expression ] "]" ;
+
+field               ::= "." IDENT ;
 ```
 
 ## Grammar conventions and resolved decisions
 
-- `TRUE` and `FALSE` are also primary expressions. They construct `Bool` nodes,
-  even though the compact grammar above lists only the original literal forms.
+- `true` and `false` are primary expressions. They construct `Bool` nodes.
 - The final `IDENT` in `type` is accepted as a type name without checking
   whether it is built-in or declared. Semantic analysis performs that check.
 - Type qualifiers are preserved in source order. `^` is a pointer qualifier,
@@ -89,12 +92,21 @@ idx                 ::= "[" expression "]"
   only inside blocks.
 - Parameter lists and calls may contain one trailing comma. Empty parameter
   lists and empty calls are valid.
-- The postfix `^` constructs a `DereferenceExpr`
+- The postfix `^` constructs a `DereferenceExpr`.
+- The postfix `.` followed by an identifier constructs a `FieldExpr`. Whether
+  the field exists is a semantic-analysis responsibility.
+- Brackets that contain `..` construct a `SliceExpr`. Both bounds are
+  optional, so `a[1..]`, `a[..3]`, `a[1..3]` and `a[..]` are valid. Brackets
+  without `..` construct an `IndexExpr`. A range is only valid inside brackets.
 - `complex_stmt` covers both expression statements and assignment statements.
   The parser accepts the grammatical shape; semantic analysis rejects
   non-assignable assignment targets such as literals or binary expressions.
+- A statement that starts with an identifier followed by `:=` or `:` is a
+  `var_decl`. Any other statement that starts with an identifier is a
+  `complex_stmt`. The parser needs one token of lookahead to decide.
 - `else if` clauses are stored as ordered branches of one `IfStmt`, with an
   optional separate final `else` block.
+- Llamada, índice y campo: f(a, b), a[i], a[1..] y a.len.
 
 ## Parser interface and AST
 
@@ -106,34 +118,41 @@ parser(tokens) -> AST
 AST.program -> Program
 ```
 
+The diagnostics of a run are also available through the `Parser` class:
+`Parser(tokens).parse()` returns the same AST, and `Parser.diagnostics` holds
+the list of `Diagnostic(code, span, message)` produced while parsing.
+
 The parser constructs the AST types in `src/mid/types/ast.py`:
 
-| Source construct          | AST node          |
-| ------------------------- | ----------------- |
-| Program declarations      | `Program`         |
-| `fn` declaration          | `FnDecl`          |
-| Variable declaration      | `VarDecl`         |
-| Parameter                 | `Param`           |
-| Type                      | `Type`            |
-| Identifier                | `Identifier`      |
-| `INTEGER`                 | `Int`             |
-| `FLOAT`                   | `Float`           |
-| `CHAR`                    | `Char`            |
-| `STRING`                  | `String`          |
-| `TRUE` / `FALSE`          | `Bool`            |
-| Binary operator           | `BinaryExpr`      |
-| `!`, unary `-`, unary `&` | `UnaryExpr`       |
-| `as type`                 | `CastExpr`        |
-| Call postfix              | `CallExpr`        |
-| Index postfix             | `IndexExpr`       |
-| Dereference postfix `^`   | `DereferenceExpr` |
-| Expression statement      | `ExprStmt`        |
-| Assignment statement      | `AssignStmt`      |
-| `if` statement            | `IfStmt`          |
-| `loop` statement          | `LoopStmt`        |
-| `return` statement        | `ReturnStmt`      |
-| `continue` statement      | `ContinueStmt`    |
-| `break` statement         | `BreakStmt`       |
+| Source construct                    | AST node          |
+| ----------------------------------- | ----------------- |
+| Program declarations                | `Program`         |
+| `fn` declaration                    | `FnDecl`          |
+| Variable declaration                | `VarDecl`         |
+| Parameter                           | `Param`           |
+| Type                                | `Type`            |
+| Identifier                          | `Identifier`      |
+| `INTEGER`                           | `Int`             |
+| `FLOAT`                             | `Float`           |
+| `CHAR`                              | `Char`            |
+| `STRING`                            | `String`          |
+| `TRUE` / `FALSE`                    | `Bool`            |
+| Binary operator                     | `BinaryExpr`      |
+| `!`, unary `-`, unary `&`           | `UnaryExpr`       |
+| `as type`                           | `CastExpr`        |
+| Call postfix                        | `CallExpr`        |
+| Index postfix `[i]`                 | `IndexExpr`       |
+| Range index postfix `[a..b]`        | `SliceExpr`       |
+| Field access postfix `.name`        | `FieldExpr`       |
+| Dereference postfix `^`             | `DereferenceExpr` |
+| Expression statement                | `ExprStmt`        |
+| Assignment statement                | `AssignStmt`      |
+| `if` statement                      | `IfStmt`          |
+| `loop` statement                    | `LoopStmt`        |
+| `return` statement                  | `ReturnStmt`      |
+| `continue` statement                | `ContinueStmt`    |
+| `break` statement                   | `BreakStmt`       |
+| Recoverable syntax error            | `ErrorNode`       |
 
 Literal nodes receive the decoded `val` from their tokens. Identifier and type
 names receive their token lexemes. The parser does not perform type inference,
@@ -142,13 +161,14 @@ symbol-table lookup, or type compatibility checks.
 Every successfully constructed AST node receives a `Span` covering its complete
 source construct. The span starts at the first token belonging to the node and
 ends immediately after the final token. For a parenthesized expression, the
-span includes the parentheses.
+span includes the parentheses. An `if` branch that starts with `else if` has a
+span that starts at the `else` token.
 
-Recoverable syntax errors produce explicit error nodes in the AST. The AST
-definition must therefore add appropriate error-node types and include them in
-the declaration, statement, or expression unions before parser implementation.
-The parser may return a partial AST containing valid constructs alongside those
-error nodes.
+Recoverable syntax errors produce `ErrorNode` nodes in the AST. `ErrorNode` is
+a single node type, included in the declaration, statement, and expression
+unions, whose span covers the invalid construct. A missing expression produces
+an empty span right after the last consumed token. The parser may return a
+partial AST containing valid constructs alongside error nodes.
 
 ## Operator precedence and associativity
 
@@ -157,23 +177,38 @@ line. Repeated binary operators at the same level associate left-to-right.
 Prefix unary operators recurse into another unary expression, and casts recurse
 through the unary level.
 
-Postfix operations are applied in source order and may be chained. For example:
+Postfix operations (call, index, range index, field access and dereference)
+share one precedence level. They are applied in source order and may be
+chained. For example:
 
 ```text
-f(x)[i]^
+f(x).items[i]^
 ```
 
-is parsed as a call on `f`, followed by indexing, followed by dereferencing.
+is parsed as a call on `f`, followed by field access, then indexing, then
+dereferencing.
 
 ## Diagnostics and recovery
 
 The parser reports syntax errors in two ways:
 
 1. it appends a structured diagnostic to the parser's diagnostic collection; and
-2. it immediately prints a `ParserError(...)` diagnostic to standard error.
+2. it immediately prints a `ParserError(...)` diagnostic to standard error in
+   the form `ParserError(code) [line:L, col:C]: message`.
 
 Diagnostics include an error code, source position or span, and message. They
 must not be printed to standard output.
+
+| Code             | Condition                                                  |
+| ---------------- | ---------------------------------------------------------- |
+| `ParserError(1)` | Unexpected token                                           |
+| `ParserError(2)` | Missing expression                                         |
+| `ParserError(3)` | Missing identifier (function, parameter or field name)     |
+| `ParserError(4)` | Missing type name                                          |
+| `ParserError(5)` | Missing delimiter (`;`, `)`, `]`, `}`, `{`, `(` or `:`)    |
+| `ParserError(6)` | Unexpected end of file                                     |
+| `ParserError(7)` | Invalid token produced by the lexer (`ERROR` token)        |
+| `ParserError(8)` | Declaration or statement in an invalid context             |
 
 Recovery uses recursive-descent panic-mode synchronization sets derived from
 the grammar:
@@ -182,15 +217,22 @@ the grammar:
 - **Statement synchronization:** stop before `;`, `}`, `fn`, `IDENT`, or a
   statement keyword (`if`, `loop`, `return`, `continue`, or `break`).
 - **Expression synchronization:** stop before the caller's delimiters, normally
-  `)`, `]`, `,`, `;`, or `}`, without consuming a delimiter belonging to the
-  enclosing production.
+  `)`, `]`, `,`, `;`, `{`, or `}`, and before `fn` or a statement keyword,
+  without consuming a delimiter belonging to the enclosing production.
 - **Block synchronization:** after an invalid statement, consume through `;`
-  when present; otherwise stop at `}` or `EOF`.
+  when present; otherwise stop at `}` or `EOF`. A `fn` found inside a block
+  ends the block as if a `}` were missing, and the declaration is parsed at
+  top level.
 
 The parser must make progress after every error: recovery either consumes at
 least one token or returns because it reached `EOF`. A missing delimiter is
-reported where it was expected. An unexpected delimiter is left for the
-enclosing production when doing so is safe.
+reported where it was expected, which is right after the last consumed token.
+An unexpected delimiter is left for the enclosing production when doing so is
+safe. A missing delimiter does not consume any token, and parsing continues as
+if the delimiter were present.
+
+An `else` without a matching `if` is reported, and its optional condition and
+block are consumed so that its closing `}` does not end the enclosing block.
 
 Typical parser errors include:
 

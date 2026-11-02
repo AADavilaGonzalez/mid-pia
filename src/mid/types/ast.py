@@ -34,11 +34,16 @@ class VarDecl(ASTNode):
     init: Expr | None
 
 
-TopLevelDecl = FnDecl | VarDecl
+@dataclass
+class ErrorNode(ASTNode):
+    pass
+
+TopLevelDecl = FnDecl | VarDecl | ErrorNode
 
 
 @dataclass
 class Type(ASTNode):
+    @dataclass
     class Pointer:
         pass
 
@@ -46,11 +51,11 @@ class Type(ASTNode):
     class Array:
         size: int
 
+    @dataclass
     class Slice:
         pass
-
+    
     Qualifier = Pointer | Array | Slice
-
     qual: list[Qualifier]
     name: str
 
@@ -142,10 +147,22 @@ class IndexExpr(ASTNode):
 class DereferenceExpr(ASTNode):
     value: Expr
 
+@dataclass
+class FieldExpr(ASTNode):
+    target: Expr
+    name: str
 
+
+@dataclass
+class SliceExpr(ASTNode):
+    target: Expr
+    low: Expr | None
+    high: Expr | None
+
+
+PostfixExpr = CallExpr | IndexExpr | SliceExpr | FieldExpr | DereferenceExpr
 # PostfixExpr remains a useful common type for expression nodes produced by
 # postfix parsing, even though each postfix operation has its own node.
-PostfixExpr = CallExpr | IndexExpr | DereferenceExpr
 
 Expr = (
     Identifier
@@ -160,6 +177,9 @@ Expr = (
     | CallExpr
     | IndexExpr
     | DereferenceExpr
+    | SliceExpr
+    | FieldExpr
+    | ErrorNode
 )
 
 
@@ -223,6 +243,7 @@ Stmt = (
     | ReturnStmt
     | ContinueStmt
     | BreakStmt
+    | ErrorNode
 )
 
 
