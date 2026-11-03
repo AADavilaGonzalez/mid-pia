@@ -187,12 +187,18 @@ literal values.
 The lexer reports every recoverable lexical error in two ways:
 
 1. it appends an `ERROR` token to the output sequence; and
-2. it immediately prints a diagnostic to standard error in the form
-   `LexerError(code) [line:L, col:C]: message`.
+2. it appends a structured `LexerError` object to the error list returned with
+   the token sequence.
 
-Diagnostics are not printed to standard output. The lexer does not silently
-collect errors for a later phase, and callers do not need a separate error
-list to know that scanning failed.
+The public interface is:
+
+```text
+lexer(source) -> (tokens, errors)
+```
+
+The lexer does not print diagnostics while scanning. The compiler driver owns
+diagnostic output and prints the collected errors after the front-end stages
+finish. Diagnostics must not be printed to standard output.
 
 | Code            | Condition                                                 |
 | --------------- | --------------------------------------------------------- |

@@ -1,6 +1,8 @@
 import argparse
 import sys
 
+from mid.types.errors import Error
+
 
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Mid Compiler")
@@ -85,6 +87,10 @@ def main():
             print(e)
             sys.exit(1)
 
+    def print_errors(errors):
+        for error in errors:
+            print(error, file=sys.stderr)
+
     def attempt_exit(obj, flag: bool, fmt):
         if flag:
             output = fmt(obj)
@@ -93,14 +99,23 @@ def main():
             sys.exit(0)
 
     source = read()
+    errors: list[Error] = []
 
-    tokens = lexer(source)
+    tokens, lexer_errors = lexer(source)
+    errors.extend(lexer_errors)
     attempt_exit(tokens, args.lex, pformat)
 
-    ast = parser(tokens)
+    ast, parser_errors = parser(tokens)
+    errors.extend(parser_errors)
     attempt_exit(ast, args.parse, pformat)
 
-    ast, st = analyzer(ast)
+    ast, st, analyzer_errors = analyzer(ast)
+    errors.extend(analyzer_errors)
+
+    if errors:
+        print_errors(errors)
+        sys.exit(1)
+
     attempt_exit(ast, args.analyze, pformat)
 
     mod = codegen(ast, st)

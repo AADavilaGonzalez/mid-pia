@@ -1,9 +1,9 @@
 import math
 import struct
-import sys
 
+from mid.types.errors import LexerError
 from mid.types.token import Token, TokenType
-from mid.types.util import Pos
+from mid.types.util import Pos, Span
 
 
 KEYWORDS = {
@@ -57,6 +57,7 @@ class Lexer:
         self.col = 1
         self.start = Pos(0, 1, 1)
         self.tokens: list[Token] = []
+        self.errors: list[LexerError] = []
 
     def peek(self, offset: int = 0) -> str:
         index = self.current + offset
@@ -77,10 +78,8 @@ class Lexer:
         self.tokens.append(Token(lexeme, token_type, self.start, value))
 
     def error(self, code: int, message: str):
-        print(
-            f"LexerError({code}) [line:{self.start.line}, col:{self.start.col}]: {message}",
-            file=sys.stderr,
-        )
+        span = Span(self.start, Pos(self.current, self.line, self.col))
+        self.errors.append(LexerError(code, span, message))
         self.emit(TokenType.ERROR)
 
     def identifier(self):
@@ -163,7 +162,7 @@ class Lexer:
         else:
             self.error(2, "Unterminated string literal")
 
-    def scan(self) -> list[Token]:
+    def scan(self) -> tuple[list[Token], list[LexerError]]:
         while self.current < len(self.source):
             self.start = Pos(self.current, self.line, self.col)
             char = self.advance()
@@ -191,11 +190,11 @@ class Lexer:
 
         self.start = Pos(self.current, self.line, self.col)
         self.emit(TokenType.EOF)
-        return self.tokens
+        return self.tokens, self.errors
 
 
-def lexer(source: str) -> list[Token]:
-    """Tokenize mid source, reporting recoverable errors to stderr.
+def lexer(source: str) -> tuple[list[Token], list[LexerError]]:
+    """Tokenize mid source and return tokens with structured errors.
 
     Positions use a zero-based source index and one-based lines/columns. Literal
     values are u64-range Python ints, f32-rounded floats, ASCII character codes,

@@ -189,13 +189,15 @@ dereferencing.
 
 ## Diagnostics and recovery
 
-The parser reports syntax errors in two ways:
+The parser returns syntax errors as structured `ParserError` objects:
 
-1. it appends a structured diagnostic to the parser's diagnostic collection; and
-2. it immediately prints a `ParserError(...)` diagnostic to standard error in
-   the form `ParserError(code) [line:L, col:C]: message`.
+```text
+parser(tokens) -> (ast, errors)
+```
 
-Diagnostics include an error code, source position or span, and message. They
+Diagnostics include an error code, source span, and message. The parser does
+not print diagnostics while parsing. The compiler driver aggregates errors
+from the front-end stages and prints them after the front-end pass. Diagnostics
 must not be printed to standard output.
 
 | Code             | Condition                                                  |

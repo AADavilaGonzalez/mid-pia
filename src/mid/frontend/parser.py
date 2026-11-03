@@ -3,10 +3,9 @@
 Input: token list produced by the lexer (it must end with EOF).
 Output: unannotated AST.
 
-Syntax errors are reported in two ways, as described in docs/stages/parser.md:
-each one is appended to ``Parser.diagnostics`` and printed immediately to
-stderr as ``ParserError(code) [line:L, col:C]: message``. The returned AST may
-be partial: invalid constructs become ``ErrorNode`` nodes.
+Syntax errors are collected as ``ParserError`` objects and returned with the
+AST. The returned AST may be partial: invalid constructs become ``ErrorNode``
+nodes. The compiler driver is responsible for printing the collected errors.
 
 Error codes (the specification does not fix them, these are the ones used here):
 
@@ -20,9 +19,7 @@ Error codes (the specification does not fix them, these are the ones used here):
     8  declaration or statement in an invalid context
 """
 
-import sys
 from copy import copy
-from dataclasses import dataclass
 
 from mid.types.ast import (
     AST,
@@ -57,6 +54,7 @@ from mid.types.ast import (
     VarDecl,
 )
 from mid.types.token import Token, TokenType as T
+from mid.types.errors import ParserError
 from mid.types.util import Pos, Span
 
 E_UNEXPECTED = 1
@@ -67,13 +65,6 @@ E_DELIM = 5
 E_EOF = 6
 E_LEXER = 7
 E_CONTEXT = 8
-
-
-@dataclass
-class Diagnostic:
-    code: int
-    span: Span
-    message: str
 
 
 # Binary operators by precedence level, from the loosest (logic_or) to the
@@ -146,7 +137,12 @@ class Parser:
             tokens.append(Token("", T.EOF, pos, None))
         self.tokens = tokens
         self.pos = 0
-        self.diagnostics: list[Diagnostic] = []
+        self.errors: list[ParserError] = []
+
+    @property
+    def diagnostics(self) -> list[ParserError]:
+        """Backward-compatible name for the parser's collected errors."""
+        return self.errors
 
     # ------------------------------------------------------------------
     # Token helpers
@@ -202,11 +198,7 @@ class Parser:
     # ------------------------------------------------------------------
 
     def report(self, code: int, message: str, span: Span):
-        self.diagnostics.append(Diagnostic(code, span, message))
-        print(
-            f"ParserError({code}) [line:{span.start.line}, col:{span.start.col}]: {message}",
-            file=sys.stderr,
-        )
+        self.errors.append(ParserError(code, span, message))
 
     def report_expected(self, what: str):
         """A required token is missing; the offending token is not consumed."""
@@ -232,12 +224,12 @@ class Parser:
     # Program and declarations
     # ------------------------------------------------------------------
 
-    def parse(self) -> AST:
+    def parse(self) -> tuple[AST, list[ParserError]]:
         start = self.peek().start()
         decls = []
         while not self.at(T.EOF):
             decls.append(self.declaration())
-        return AST(Program(self.span_from(start), decls))
+        return AST(Program(self.span_from(start), decls)), self.errors
 
     def declaration(self):
         start = self.peek().start()
@@ -607,13 +599,11 @@ class Parser:
         return ErrorNode(self.span_from(start))
 
 
-def parser(tokens: list[Token]) -> AST:
-    """Parse a token list (ending in EOF) into an unannotated AST.
+def parser(tokens: list[Token]) -> tuple[AST, list[ParserError]]:
+    """Parse a token list (ending in EOF) into an AST and error list.
 
-    Diagnostics are printed to stderr. Use ``Parser(tokens)`` directly to also
-    inspect ``Parser.diagnostics``.
+    ``Parser(tokens)`` may be used when access to the parser state is needed.
     """
     return Parser(tokens).parse()
 
-
-__all__ = ["parser", "Parser", "Diagnostic"]
+__all__ = ["parser", "Parser"]
