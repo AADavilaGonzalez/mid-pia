@@ -1,19 +1,49 @@
 Resultados de las pruebas del parser - Compilador Mid
-Fecha: 2026-11-02 22:57 CST
+Fecha: 2026-11-02 23:05 CST
 Rama: main
-Commit probado: 3abc8dc
-warning: `VIRTUAL_ENV=/home/jefe_de_jefes/Documents/7semestre/compiladores/venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+Commit probado: ee3020c
 Python: Python 3.14.10
 Comando: PYTHONPATH=src uv run pytest -v tests/test_parser.py
 
-warning: `VIRTUAL_ENV=/home/jefe_de_jefes/Documents/7semestre/compiladores/venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
 ============================= test session starts ==============================
 platform linux -- Python 3.14.10, pytest-9.1.1, pluggy-1.7.0 -- /home/jefe_de_jefes/Documents/7semestre/compiladores/mid-pia/.venv/bin/python
 cachedir: .pytest_cache
 rootdir: /home/jefe_de_jefes/Documents/7semestre/compiladores/mid-pia
 configfile: pyproject.toml
-collecting ... ERROR: file or directory not found: tests/test_parser.py
+collecting ... collected 33 items
 
-collected 0 items
+tests/test_parser.py::test_function_with_params_and_return_type PASSED   [  3%]
+tests/test_parser.py::test_top_level_variables_and_functions PASSED      [  6%]
+tests/test_parser.py::test_empty_program_and_empty_function PASSED       [  9%]
+tests/test_parser.py::test_trailing_commas_in_params_and_calls PASSED    [ 12%]
+tests/test_parser.py::test_variable_declaration_forms_inside_blocks PASSED [ 15%]
+tests/test_parser.py::test_assignments_and_expression_statements PASSED  [ 18%]
+tests/test_parser.py::test_if_else_if_else_is_one_statement PASSED       [ 21%]
+tests/test_parser.py::test_if_without_else_and_loop_with_break_continue PASSED [ 24%]
+tests/test_parser.py::test_return_with_and_without_value PASSED          [ 27%]
+tests/test_parser.py::test_precedence_and_left_associativity PASSED      [ 30%]
+tests/test_parser.py::test_all_binary_operators PASSED                   [ 33%]
+tests/test_parser.py::test_unary_cast_and_parentheses PASSED             [ 36%]
+tests/test_parser.py::test_postfix_chain_is_applied_in_source_order PASSED [ 39%]
+tests/test_parser.py::test_literals_get_decoded_values PASSED            [ 42%]
+tests/test_parser.py::test_type_qualifiers_keep_source_order PASSED      [ 45%]
+tests/test_parser.py::test_field_access_is_postfix PASSED                [ 48%]
+tests/test_parser.py::test_ranges_inside_an_index PASSED                 [ 51%]
+tests/test_parser.py::test_slice_errors_are_reported PASSED              [ 54%]
+tests/test_parser.py::test_spans_cover_whole_constructs PASSED           [ 57%]
+tests/test_parser.py::test_parenthesized_expression_span_includes_parentheses PASSED [ 60%]
+tests/test_parser.py::test_missing_semicolon_is_reported_and_parsing_continues PASSED [ 63%]
+tests/test_parser.py::test_missing_expression_creates_error_node_without_eating_the_semicolon PASSED [ 66%]
+tests/test_parser.py::test_missing_closing_delimiters PASSED             [ 69%]
+tests/test_parser.py::test_unexpected_eof_inside_block PASSED            [ 72%]
+tests/test_parser.py::test_function_inside_block_is_treated_as_missing_brace PASSED [ 75%]
+tests/test_parser.py::test_invalid_top_level_item_recovers_at_next_declaration PASSED [ 78%]
+tests/test_parser.py::test_bad_statement_becomes_error_node_and_next_statement_survives PASSED [ 81%]
+tests/test_parser.py::test_missing_type_name_and_missing_identifier PASSED [ 84%]
+tests/test_parser.py::test_lexer_error_tokens_are_reported_by_the_parser PASSED [ 87%]
+tests/test_parser.py::test_malformed_parameter_list PASSED               [ 90%]
+tests/test_parser.py::test_diagnostics_go_to_stderr_only_and_have_positions PASSED [ 93%]
+tests/test_parser.py::test_parser_always_terminates_on_garbage PASSED    [ 96%]
+tests/test_parser.py::test_parser_function_returns_ast_and_accepts_tokens_without_eof PASSED [100%]
 
-============================ no tests ran in 0.03s =============================
+============================== 33 passed in 0.15s ==============================
