@@ -91,7 +91,7 @@ ubicada en (docs/stages/parser.md)
 
 ### Analizador semántico (Esmeralda y Diego) | Límite de entrega: Semana 4
 Implementar la Tabla de Símbolos y el Analizador Semántico (src/mid/frontend/analyzer.py) de acuerdo
-a la especificación ubicada en (docs/stages/analyzer.md).
+a la especificación ubicada en (docs/stages/semantics.md).
 - Entrada: AST sin anotar
 - Salida: AST Decorado (anotado con tipos) y Tabla de Símbolos poblada y validada
 
@@ -104,7 +104,7 @@ a la especificación ubicada en (docs/stages/analyzer.md).
 - src/mid/frontend/analyzer.py
 - src/mid/types/ast.py
 - src/mid/types/symbol_table.py
-- docs/stages/analyzer.md
+- docs/stages/semantics.md
 
 
 ### Generación de código (Rodrigo) | Límite de entrega: Semana 5

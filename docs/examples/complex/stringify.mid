@@ -1,27 +1,31 @@
-I32_MAX: i32 = 2,147,483,647;
-I32_MIN: i32 = -2,147,483,648;
+I32_MAX: i32 = 2147483647;
+I32_MIN: i32 = -2147483648;
 
 fn usize_to_str(x: usize, buff: []u8) -> []u8 {
     if buff.len == 0 { return buff; }
+    if x == 0 {
+        buff[0] = '0';
+        return buff[..1];
+    }
 
-    buff[0] = '0';
-
+    // Digits are produced in reverse order into aux.
     aux: [20]u8; i: usize = 0;
     loop {
-    if x == 0 || i >= buff.len { break; }
-        mod := (x % 10) as u8;
-        aux[i] = mod + '0';
-    x /= 10; i += 1;
+        if x == 0 || i >= aux.len { break; }
+        aux[i] = (x % 10) as u8 + '0';
+        x /= 10; i += 1;
     }
 
-    len := i; i = 0;
+    // Copy them back in the right order, as many as fit in buff.
+    n: usize = 0;
     loop {
-    if i == end { break; }
-        buff[i] = aux[len-1-i];
-    i += 1;
+        if i == 0 || n >= buff.len { break; }
+        i -= 1;
+        buff[n] = aux[i];
+        n += 1;
     }
 
-    return buff[..len];
+    return buff[..n];
 }
 
 fn i32_to_str(x: i32, buff: []u8) -> []u8 {
@@ -42,8 +46,9 @@ fn i32_to_str(x: i32, buff: []u8) -> []u8 {
 }
 
 fn main() {
-    buff: [32]byte;
+    buff: [32]u8;
     x := 2 + 2;
-    print("2 + 2 is: ");
-    print(i32_to_str(buff[..], x));
+    write("2 + 2 is: ");
+    write(i32_to_str(x, buff[..]));
+    write("\n");
 }

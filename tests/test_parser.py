@@ -10,12 +10,20 @@ from mid.types.util import Pos
 
 
 def parse(source):
-    """Lex and parse. Returns (ast, diagnostics, stderr text)."""
-    stderr = io.StringIO()
-    with redirect_stderr(stderr):
-        p = Parser(lexer(source))
-        tree = p.parse()
-    return tree, p.diagnostics, stderr.getvalue()
+    """Lex and parse. Returns (ast, parser errors, report text).
+
+    The report is the text the driver would print for lexer + parser errors.
+    """
+    tokens, lexer_errors = lexer(source)
+    output = io.StringIO()
+    with redirect_stdout(output), redirect_stderr(output):
+        p = Parser(tokens)
+        tree, errors = p.parse()
+    # The parser returns its errors; it must not print anything itself.
+    assert output.getvalue() == ""
+    assert errors is p.diagnostics
+    report = "\n".join(str(error) for error in lexer_errors + errors)
+    return tree, errors, report
 
 
 def valid(source):
@@ -329,15 +337,10 @@ def test_malformed_parameter_list():
     assert [p.name for p in fn.params] == ["b"]
 
 
-def test_diagnostics_go_to_stderr_only_and_have_positions():
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    with redirect_stdout(stdout), redirect_stderr(stderr):
-        p = Parser(lexer("fn main() {\n  x := 1\n}"))
-        p.parse()
-    assert stdout.getvalue() == ""
-    assert "ParserError(5) [line:2, col:9]" in stderr.getvalue()
-    assert p.diagnostics[0].span.start == Pos(20, 2, 9)
+def test_diagnostics_are_returned_and_have_positions():
+    _, diagnostics, report = parse("fn main() {\n  x := 1\n}")
+    assert "ParserError(5) [line:2, col:9]" in report
+    assert diagnostics[0].span.start == Pos(20, 2, 9)
 
 
 def test_parser_always_terminates_on_garbage():
@@ -354,10 +357,12 @@ def test_parser_always_terminates_on_garbage():
 
 
 def test_parser_function_returns_ast_and_accepts_tokens_without_eof():
-    stderr = io.StringIO()
-    with redirect_stderr(stderr):
-        tree = parser(lexer("fn main() { }"))
-        tokens = lexer("x := 1;")[:-1]  # EOF removed on purpose
-        assert Parser(tokens).parse().program.decl[0].name == "x"
+    tokens, _ = lexer("fn main() { }")
+    tree, errors = parser(tokens)
     assert isinstance(tree, A.AST)
-    assert stderr.getvalue() == ""
+    assert errors == []
+
+    tokens, _ = lexer("x := 1;")
+    tree, errors = Parser(tokens[:-1]).parse()  # EOF removed on purpose
+    assert tree.program.decl[0].name == "x"
+    assert errors == []

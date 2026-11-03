@@ -9,9 +9,14 @@ from mid.types.util import Pos
 
 
 def scan(source):
-    stderr = io.StringIO()
-    with redirect_stderr(stderr):
-        tokens = lexer(source)
+    """Lex ``source``. Returns (tokens, report) where report is the text the
+    driver would print for the returned errors."""
+    output = io.StringIO()
+    with redirect_stdout(output), redirect_stderr(output):
+        tokens, errors = lexer(source)
+    # The lexer returns its errors; it must not print anything itself.
+    assert output.getvalue() == ""
+    assert len(errors) == sum(token.type == T.ERROR for token in tokens)
     assert tokens[-1].type == T.EOF
     assert sum(token.type == T.EOF for token in tokens) == 1
     assert tokens[-1].lexeme == ""
@@ -19,7 +24,7 @@ def scan(source):
     # Check source offsets without relying on the shared Token.end() helper.
     for token in tokens:
         assert source[token.pos.idx:token.pos.idx + len(token.lexeme)] == token.lexeme
-    return tokens, stderr.getvalue()
+    return tokens, "\n".join(str(error) for error in errors)
 
 def valid(source):
     tokens, stderr = scan(source)

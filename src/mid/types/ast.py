@@ -1,7 +1,12 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
+from typing import TYPE_CHECKING
 
 from mid.types.util import Span
+
+if TYPE_CHECKING:
+    from mid.types.sem_type import SemType
+    from mid.types.symbol_table import Symbol
 
 
 @dataclass
@@ -12,6 +17,15 @@ class AST:
 @dataclass
 class ASTNode:
     span: Span
+    # Semantic annotations, filled in by the analyzer (None until then):
+    # - ty: type of an expression, of a VarDecl/Param variable, or of a resolved
+    #   Type node.
+    # - symbol: resolved Symbol of an Identifier, or the Symbol declared by a
+    #   VarDecl, Param or FnDecl.
+    # They are keyword-only so the positional constructors stay unchanged, and
+    # they are ignored by == so annotated and unannotated trees compare equal.
+    ty: SemType | None = field(default=None, kw_only=True, compare=False)
+    symbol: Symbol | None = field(default=None, kw_only=True, compare=False, repr=False)
 
 
 @dataclass

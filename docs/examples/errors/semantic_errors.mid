@@ -1,0 +1,21 @@
+// Syntactically valid program with semantic errors.
+// Each commented line reports the AnalyzerError code shown in its comment.
+// The program has no main function: AnalyzerError(11).
+
+counter: byte;                  // 3: unknown type 'byte'
+small: u8 = 300;                // 4: 300 does not fit in u8
+eof := 1;                       // 2: 'eof' is a standard-library function
+
+fn helper(a: i32) -> i32 {      // 10: may end without returning a value
+    a := 1;                     // 2: shadows parameter 'a'
+    b: u32 = a;                 // 4: i32 is not u32
+    if a { }                    // 4: condition must be bool
+    c := true + 1;              // 5: '+' requires numeric operands
+    5 = a;                      // 6: a literal is not assignable
+    write(a);                   // 7: write expects []u8, found i32
+    f := 1.5 as bool;           // 8: f32 cannot be cast to bool
+    d := a[0];                  // 9: i32 cannot be indexed
+    n := a.len;                 // 9: .len requires an array or slice
+    break;                      // 10: break outside of a loop
+    print(a);                   // 1: 'print' is undeclared
+}
