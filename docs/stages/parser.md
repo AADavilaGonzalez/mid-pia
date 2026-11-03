@@ -106,7 +106,6 @@ field               ::= "." IDENT ;
   `complex_stmt`. The parser needs one token of lookahead to decide.
 - `else if` clauses are stored as ordered branches of one `IfStmt`, with an
   optional separate final `else` block.
-- Llamada, índice y campo: f(a, b), a[i], a[1..] y a.len.
 
 ## Parser interface and AST
 
