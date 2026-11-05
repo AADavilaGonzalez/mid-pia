@@ -13,3 +13,4 @@
   -a,     --analyze             Stop after analysis phase, output Annotated AST as json file
   -i,     --ir                  Stop after IR codegen phase, output LLVM IR file
   -c,     --obj                 Stop after object codegen phase, ouput object file
+  -r,     --run                 Execute the program immediately using JIT

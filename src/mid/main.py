@@ -47,6 +47,11 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Stop after object codegen phase, ouput object file",
     )
+    phase_group.add_argument(
+        "-r", "--run",
+        action="store_true",
+        help="Compile and run the program directly using JIT",
+    )
     return parser
 
 
@@ -120,6 +125,11 @@ def main():
 
     mod = codegen(ast, st)
     attempt_exit(mod, args.ir, str)
+
+    if args.run:
+        from mid.backend.runner import run_jit
+        exit_code = run_jit(mod)
+        sys.exit(exit_code)
 
     raise NotImplementedError
 

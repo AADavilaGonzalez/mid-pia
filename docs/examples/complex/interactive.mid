@@ -1,0 +1,255 @@
+// Interactive REPL and user input processing suite for the Mid compiler.
+// Exercises:
+// - Standard Library Input: getline() and read() functions
+// - Standard Library State: eof() detection
+// - Slices and Parsing: Sub-slicing strings, string equality, prefix matching
+// - String Conversions: Parsing numeric values from text (parse_i32)
+// - In-Place String Mutation: Reversing string buffers in-place
+// - State Tracking: Multi-command loop with metrics aggregation and clean exit
+
+I32_MAX: i32 = 2147483647;
+I32_MIN: i32 = -2147483648;
+
+fn str_equals(a: []u8, b: []u8) -> bool {
+    if a.len != b.len { return false; }
+    i: usize = 0;
+    loop {
+        if i >= a.len { break; }
+        if a[i] != b[i] { return false; }
+        i += 1;
+    }
+    return true;
+}
+
+fn str_starts_with(s: []u8, prefix: []u8) -> bool {
+    if s.len < prefix.len { return false; }
+    i: usize = 0;
+    loop {
+        if i >= prefix.len { break; }
+        if s[i] != prefix[i] { return false; }
+        i += 1;
+    }
+    return true;
+}
+
+fn parse_i32(s: []u8) -> i32 {
+    val: i32 = 0;
+    i: usize = 0;
+    loop {
+        if i >= s.len { break; }
+        c := s[i];
+        if c >= '0' && c <= '9' {
+            val = val * 10 + (c - '0') as i32;
+        } else if c != ' ' {
+            break;
+        }
+        i += 1;
+    }
+    return val;
+}
+
+fn reverse_slice(s: []u8) {
+    if s.len <= 1 { return; }
+    left: usize = 0;
+    right: usize = s.len - 1;
+    loop {
+        if left >= right { break; }
+        tmp := s[left];
+        s[left] = s[right];
+        s[right] = tmp;
+        left += 1;
+        right -= 1;
+    }
+}
+
+fn count_words(s: []u8) -> i32 {
+    count: i32 = 0;
+    in_word := false;
+    i: usize = 0;
+    loop {
+        if i >= s.len { break; }
+        c := s[i];
+        if c == ' ' || c == '\t' || c == '\r' || c == '\n' {
+            in_word = false;
+        } else if !in_word {
+            in_word = true;
+            count += 1;
+        }
+        i += 1;
+    }
+    return count;
+}
+
+fn usize_to_str(x: usize, buff: []u8) -> []u8 {
+    if buff.len == 0 { return buff; }
+    if x == 0 {
+        buff[0] = '0';
+        return buff[..1];
+    }
+    aux: [20]u8;
+    i: usize = 0;
+    loop {
+        if x == 0 || i >= aux.len { break; }
+        aux[i] = (x % 10) as u8 + '0';
+        x /= 10;
+        i += 1;
+    }
+    n: usize = 0;
+    loop {
+        if i == 0 || n >= buff.len { break; }
+        i -= 1;
+        buff[n] = aux[i];
+        n += 1;
+    }
+    return buff[..n];
+}
+
+fn i32_to_str(x: i32, buff: []u8) -> []u8 {
+    if buff.len == 0 { return buff; }
+    if x < 0 {
+        buff[0] = '-';
+        u: usize;
+        if x == I32_MIN {
+            u = I32_MAX as usize + 1;
+        } else {
+            u = -x as usize;
+        }
+        digits := usize_to_str(u, buff[1..]);
+        return buff[..digits.len + 1];
+    } else {
+        return usize_to_str(x as usize, buff);
+    }
+}
+
+fn print_i32(x: i32) {
+    buff: [32]u8;
+    write(i32_to_str(x, buff[..]));
+}
+
+fn handle_calc(s: []u8) {
+    op_idx: usize = 0;
+    found_op: u8 = 0;
+    i: usize = 0;
+    loop {
+        if i >= s.len { break; }
+        c := s[i];
+        if c == '+' || c == '-' || c == '*' || c == '/' {
+            found_op = c;
+            op_idx = i;
+            break;
+        }
+        i += 1;
+    }
+
+    if found_op == 0 {
+        write("Calculation error: expected operator (+, -, *, /)\n");
+        return;
+    }
+
+    left_str := s[..op_idx];
+    right_str := s[op_idx + 1..];
+
+    r_start: usize = 0;
+    loop {
+        if r_start >= right_str.len { break; }
+        if right_str[r_start] != ' ' { break; }
+        r_start += 1;
+    }
+
+    a := parse_i32(left_str);
+    b := parse_i32(right_str[r_start..]);
+
+    res: i32 = 0;
+    if found_op == '+' {
+        res = a + b;
+    } else if found_op == '-' {
+        res = a - b;
+    } else if found_op == '*' {
+        res = a * b;
+    } else if found_op == '/' {
+        if b == 0 {
+            write("Division by zero error!\n");
+            return;
+        }
+        res = a / b;
+    }
+
+    write("Result: ");
+    print_i32(res);
+    write("\n");
+}
+
+fn main() {
+    write("=== Mid Interactive Input Processor ===\n");
+    write("Commands: echo <text> | rev <text> | words <text> | calc <n1> + <n2> | read <N> | quit\n");
+
+    buf: [128]u8;
+    cmd_count: i32 = 0;
+    total_bytes: usize = 0;
+
+    loop {
+        if eof() { break; }
+        write("> ");
+        full: bool = false;
+        line := getline(buf[..], &full);
+        if line.len == 0 {
+            if eof() { break; }
+            continue;
+        }
+        total_bytes += line.len;
+        cmd_count += 1;
+
+        if str_equals(line, "quit") || str_equals(line, "exit") {
+            write("Exiting upon quit command.\n");
+            break;
+        } else if str_starts_with(line, "echo ") {
+            payload := line[5..];
+            write("Echo: ");
+            write(payload);
+            write("\n");
+        } else if str_starts_with(line, "rev ") {
+            payload := line[4..];
+            scratch: [128]u8;
+            i: usize = 0;
+            loop {
+                if i >= payload.len || i >= scratch.len { break; }
+                scratch[i] = payload[i];
+                i += 1;
+            }
+            rev := scratch[..i];
+            reverse_slice(rev);
+            write("Reversed: ");
+            write(rev);
+            write("\n");
+        } else if str_starts_with(line, "words ") {
+            payload := line[6..];
+            w := count_words(payload);
+            write("Word count: ");
+            print_i32(w);
+            write(" (characters: ");
+            print_i32(payload.len as i32);
+            write(")\n");
+        } else if str_starts_with(line, "calc ") {
+            handle_calc(line[5..]);
+        } else if str_starts_with(line, "read ") {
+            count := parse_i32(line[5..]) as usize;
+            if count > buf.len { count = buf.len; }
+            raw := read(buf[..count]);
+            write("Raw read: '");
+            write(raw);
+            write("'\n");
+        } else {
+            write("Unknown command: '");
+            write(line);
+            write("'\n");
+        }
+    }
+
+    write("\n--- Session Statistics ---\n");
+    write("Total commands executed: ");
+    print_i32(cmd_count);
+    write("\nTotal input bytes:       ");
+    print_i32(total_bytes as i32);
+    write("\nSession ended.\n");
+}
+

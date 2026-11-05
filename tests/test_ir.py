@@ -53,85 +53,36 @@ llvm.initialize_native_asmprinter()
 
 
 # ----------------------------------------------------------------------
-# C Runtime Stubs for Standard Library (mid_write, mid_read, mid_getline, mid_eof)
+# Standard Library I/O runtime context for test assertions
 # ----------------------------------------------------------------------
 
-_STDIO_STATE = {
-    "written": bytearray(),
-    "input": b"",
-    "pos": 0,
-}
-
-WRITE_CFUNC = ctypes.CFUNCTYPE(None, ctypes.POINTER(ctypes.c_uint8), ctypes.c_int64)
-READ_CFUNC = ctypes.CFUNCTYPE(
-    ctypes.c_int64, ctypes.POINTER(ctypes.c_uint8), ctypes.c_int64
+import io
+from mid.backend.runner import (
+    JITRunner,
+    StreamContext,
+    bind_runtime_symbols,
+    get_current_context,
+    set_current_context,
 )
-GETLINE_CFUNC = ctypes.CFUNCTYPE(
-    ctypes.c_int64,
-    ctypes.POINTER(ctypes.c_uint8),
-    ctypes.c_int64,
-    ctypes.POINTER(ctypes.c_uint8),
-)
-EOF_CFUNC = ctypes.CFUNCTYPE(ctypes.c_uint8)
 
-
-@WRITE_CFUNC
-def _c_mid_write(ptr, length):
-    if length > 0:
-        _STDIO_STATE["written"].extend(ptr[:length])
-
-
-@READ_CFUNC
-def _c_mid_read(ptr, length):
-    inp = _STDIO_STATE["input"]
-    pos = _STDIO_STATE["pos"]
-    chunk = inp[pos : pos + length]
-    for idx, b in enumerate(chunk):
-        ptr[idx] = b
-    _STDIO_STATE["pos"] = pos + len(chunk)
-    return len(chunk)
-
-
-@GETLINE_CFUNC
-def _c_mid_getline(ptr, length, full_line_ptr):
-    inp = _STDIO_STATE["input"]
-    pos = _STDIO_STATE["pos"]
-    count = 0
-    full = 0
-    while pos < len(inp) and count < length:
-        b = inp[pos]
-        pos += 1
-        if b == ord("\n"):
-            full = 1
-            break
-        ptr[count] = b
-        count += 1
-    if pos >= len(inp) and count > 0:
-        full = 1
-    _STDIO_STATE["pos"] = pos
-    full_line_ptr[0] = full
-    return count
-
-
-@EOF_CFUNC
-def _c_mid_eof():
-    return 1 if _STDIO_STATE["pos"] >= len(_STDIO_STATE["input"]) else 0
-
-
-llvm.add_symbol("mid_write", ctypes.cast(_c_mid_write, ctypes.c_void_p).value)
-llvm.add_symbol("mid_read", ctypes.cast(_c_mid_read, ctypes.c_void_p).value)
-llvm.add_symbol("mid_getline", ctypes.cast(_c_mid_getline, ctypes.c_void_p).value)
-llvm.add_symbol("mid_eof", ctypes.cast(_c_mid_eof, ctypes.c_void_p).value)
+_test_in = io.BytesIO()
+_test_out = io.BytesIO()
 
 
 def reset_stdio(input_bytes: bytes = b"") -> None:
-    _STDIO_STATE["written"].clear()
-    _STDIO_STATE["input"] = input_bytes
-    _STDIO_STATE["pos"] = 0
+    global _test_in, _test_out
+    _test_in = io.BytesIO(input_bytes)
+    _test_out = io.BytesIO()
+    bind_runtime_symbols()
+    set_current_context(StreamContext(_test_in, _test_out))
 
 
 def get_written_bytes() -> bytes:
-    return bytes(_STDIO_STATE["written"])
+    return _test_out.getvalue()
+
+
+# Initialize test I/O context
+reset_stdio()
 
 
 # ----------------------------------------------------------------------
@@ -148,39 +99,6 @@ def compile_ir(source: str) -> ir.Module:
     tree, st, sem_errors = analyzer(tree)
     assert sem_errors == [], f"Analyzer errors: {sem_errors}"
     return codegen(tree, st)
-
-
-class JITRunner:
-    """Helper that compiles an llvmlite.ir.Module with MCJIT for in-process execution."""
-
-    def __init__(self, module: ir.Module):
-        self.ir_str = str(module)
-        self.llvm_mod = llvm.parse_assembly(self.ir_str)
-        self.llvm_mod.verify()
-
-        self.target_machine = llvm.Target.from_default_triple().create_target_machine()
-        self.llvm_mod.triple = llvm.get_default_triple()
-        self.llvm_mod.data_layout = str(self.target_machine.target_data)
-
-        self.engine = llvm.create_mcjit_compiler(self.llvm_mod, self.target_machine)
-        self.engine.finalize_object()
-        self.engine.run_static_constructors()
-
-    def call(self, name: str, restype, *argtypes_and_args):
-        addr = self.engine.get_function_address(name)
-        assert addr != 0, f"Function {name!r} not found in JIT module"
-        argtypes = [t for t, _ in argtypes_and_args]
-        args = [v for _, v in argtypes_and_args]
-        fn = ctypes.CFUNCTYPE(restype, *argtypes)(addr)
-        return fn(*args)
-
-    def call_main(self) -> int:
-        return self.call("main", ctypes.c_int32)
-
-    def get_global(self, name: str, ctype):
-        addr = self.engine.get_global_value_address(name)
-        assert addr != 0, f"Global {name!r} not found in JIT module"
-        return ctype.from_address(addr).value
 
 
 def jit_compile(source: str) -> tuple[ir.Module, JITRunner]:
@@ -873,6 +791,39 @@ def test_examples_compile_and_execute():
     _, stringify_jit = jit_compile(stringify_src)
     assert stringify_jit.call_main() == 0
     assert get_written_bytes() == b"2 + 2 is: 4\n"
+
+    # 3. complex/algorithms.mid
+    algorithms_src = (EXAMPLES / "complex" / "algorithms.mid").read_text()
+    reset_stdio()
+    _, algorithms_jit = jit_compile(algorithms_src)
+    assert algorithms_jit.call_main() == 0
+    expected_output = (
+        b"=== Mid Algorithms Suite ===\n"
+        b"Before sort: [42, 17, -5, 99, 0, -23, 8, 31]\n"
+        b"After sort:  [-23, -5, 0, 8, 17, 31, 42, 99]\n"
+        b"Sorted verification: PASS\n"
+        b"Binary search for 42 found at index: 6\n"
+        b"Binary search for 100 result: -1\n"
+        b"GCD(252, 105) = 21\n"
+        b"Collatz steps for 27: 111\n"
+        b"Fibonacci(10) = 55\n"
+        b"Average rounded down: 21\n"
+        b"Suite completed successfully!\n"
+    )
+    assert get_written_bytes() == expected_output
+
+    # 4. complex/interactive.mid
+    interactive_src = (EXAMPLES / "complex" / "interactive.mid").read_text()
+    sim_input = b"echo Hello World\nrev 12345\nwords test phrase\ncalc 7 * 6\nquit\n"
+    reset_stdio(sim_input)
+    _, interactive_jit = jit_compile(interactive_src)
+    assert interactive_jit.call_main() == 0
+    written = get_written_bytes()
+    assert b"Echo: Hello World\n" in written
+    assert b"Reversed: 54321\n" in written
+    assert b"Word count: 2 (characters: 11)\n" in written
+    assert b"Result: 42\n" in written
+    assert b"Total commands executed: 5\n" in written
 
 
 def test_codegen_adversarial_audit_remediation_suite():

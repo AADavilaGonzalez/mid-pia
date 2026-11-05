@@ -83,7 +83,12 @@ def test_symbol_table_scopes_lookup_and_no_shadowing():
 # ------------------------------------------------------------ examples
 
 def test_valid_examples_have_no_errors():
-    for path in [EXAMPLES / "simple" / "assignment.mid", EXAMPLES / "complex" / "stringify.mid"]:
+    for path in [
+        EXAMPLES / "simple" / "assignment.mid",
+        EXAMPLES / "complex" / "stringify.mid",
+        EXAMPLES / "complex" / "algorithms.mid",
+        EXAMPLES / "complex" / "interactive.mid",
+    ]:
         valid(path.read_text())
 
 

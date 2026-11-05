@@ -1,0 +1,246 @@
+// Comprehensive algorithms test suite for the Mid compiler.
+// Exercises:
+// - Pointers: ^T types, address-of (&), pointer dereference (^)
+// - Aggregates: Arrays ([N]T), slices ([]T), sub-slicing (arr[a..b], arr[..], arr[a..])
+// - Recursion: Quicksort and double-recursive Fibonacci
+// - Iteration: Loops with break, continue, and bounds checking
+// - Conditionals: if / else if / else chains with boolean logic
+// - Arithmetic & Casts: signed/unsigned modulo, division, float casting (f32)
+// - Standard Library: Formatted output via write()
+
+I32_MAX: i32 = 2147483647;
+I32_MIN: i32 = -2147483648;
+
+fn swap(a: ^i32, b: ^i32) {
+    tmp := a^;
+    a^ = b^;
+    b^ = tmp;
+}
+
+fn partition(arr: []i32, low: usize, high: usize) -> usize {
+    pivot := arr[high];
+    i := low;
+    j := low;
+    loop {
+        if j >= high { break; }
+        if arr[j] <= pivot {
+            swap(&arr[i], &arr[j]);
+            i += 1;
+        }
+        j += 1;
+    }
+    swap(&arr[i], &arr[high]);
+    return i;
+}
+
+fn quicksort(arr: []i32, low: usize, high: usize) {
+    if low < high {
+        p := partition(arr, low, high);
+        if p > 0 {
+            quicksort(arr, low, p - 1);
+        }
+        if p < high {
+            quicksort(arr, p + 1, high);
+        }
+    }
+}
+
+fn verify_sorted(arr: []i32) -> bool {
+    if arr.len <= 1 { return true; }
+    i: usize = 0;
+    loop {
+        if i + 1 >= arr.len { break; }
+        if arr[i] > arr[i + 1] { return false; }
+        i += 1;
+    }
+    return true;
+}
+
+fn binary_search(arr: []i32, target: i32) -> i32 {
+    if arr.len == 0 { return -1; }
+    left: usize = 0;
+    right: usize = arr.len - 1;
+    loop {
+        if left > right { break; }
+        mid := left + (right - left) / 2;
+        if arr[mid] == target {
+            return mid as i32;
+        } else if arr[mid] < target {
+            left = mid + 1;
+        } else {
+            if mid == 0 { break; }
+            right = mid - 1;
+        }
+    }
+    return -1;
+}
+
+fn gcd(a: i32, b: i32) -> i32 {
+    x := a;
+    y := b;
+    loop {
+        if y == 0 { break; }
+        t := y;
+        y = x % y;
+        x = t;
+    }
+    return x;
+}
+
+fn collatz_steps(n: i32) -> i32 {
+    steps: i32 = 0;
+    val := n;
+    loop {
+        if val <= 1 { break; }
+        if val % 2 == 0 {
+            val /= 2;
+        } else {
+            val = 3 * val + 1;
+        }
+        steps += 1;
+    }
+    return steps;
+}
+
+fn fib(n: i32) -> i32 {
+    if n <= 0 { return 0; }
+    if n == 1 { return 1; }
+    return fib(n - 1) + fib(n - 2);
+}
+
+fn average(arr: []i32) -> f32 {
+    if arr.len == 0 { return 0.0; }
+    sum: i32 = 0;
+    i: usize = 0;
+    loop {
+        if i >= arr.len { break; }
+        sum += arr[i];
+        i += 1;
+    }
+    return (sum as f32) / (arr.len as f32);
+}
+
+fn usize_to_str(x: usize, buff: []u8) -> []u8 {
+    if buff.len == 0 { return buff; }
+    if x == 0 {
+        buff[0] = '0';
+        return buff[..1];
+    }
+    aux: [20]u8;
+    i: usize = 0;
+    loop {
+        if x == 0 || i >= aux.len { break; }
+        aux[i] = (x % 10) as u8 + '0';
+        x /= 10;
+        i += 1;
+    }
+    n: usize = 0;
+    loop {
+        if i == 0 || n >= buff.len { break; }
+        i -= 1;
+        buff[n] = aux[i];
+        n += 1;
+    }
+    return buff[..n];
+}
+
+fn i32_to_str(x: i32, buff: []u8) -> []u8 {
+    if buff.len == 0 { return buff; }
+    if x < 0 {
+        buff[0] = '-';
+        u: usize;
+        if x == I32_MIN {
+            u = I32_MAX as usize + 1;
+        } else {
+            u = -x as usize;
+        }
+        digits := usize_to_str(u, buff[1..]);
+        return buff[..digits.len + 1];
+    } else {
+        return usize_to_str(x as usize, buff);
+    }
+}
+
+fn print_i32(x: i32) {
+    buff: [32]u8;
+    write(i32_to_str(x, buff[..]));
+}
+
+fn print_array(arr: []i32) {
+    i: usize = 0;
+    loop {
+        if i >= arr.len { break; }
+        if i > 0 { write(", "); }
+        print_i32(arr[i]);
+        i += 1;
+    }
+}
+
+fn main() {
+    write("=== Mid Algorithms Suite ===\n");
+
+    // 1. Array & Quicksort with pointer swap
+    data: [8]i32;
+    data[0] = 42;
+    data[1] = 17;
+    data[2] = -5;
+    data[3] = 99;
+    data[4] = 0;
+    data[5] = -23;
+    data[6] = 8;
+    data[7] = 31;
+
+    write("Before sort: [");
+    print_array(data[..]);
+    write("]\n");
+
+    quicksort(data[..], 0, data.len - 1);
+
+    write("After sort:  [");
+    print_array(data[..]);
+    write("]\n");
+
+    if verify_sorted(data[..]) {
+        write("Sorted verification: PASS\n");
+    } else {
+        write("Sorted verification: FAIL\n");
+    }
+
+    // 2. Binary search
+    idx := binary_search(data[..], 42);
+    write("Binary search for 42 found at index: ");
+    print_i32(idx);
+    write("\n");
+
+    not_found := binary_search(data[..], 100);
+    write("Binary search for 100 result: ");
+    print_i32(not_found);
+    write("\n");
+
+    // 3. Greatest Common Divisor
+    g := gcd(252, 105);
+    write("GCD(252, 105) = ");
+    print_i32(g);
+    write("\n");
+
+    // 4. Collatz steps
+    c := collatz_steps(27);
+    write("Collatz steps for 27: ");
+    print_i32(c);
+    write("\n");
+
+    // 5. Recursive Fibonacci
+    f := fib(10);
+    write("Fibonacci(10) = ");
+    print_i32(f);
+    write("\n");
+
+    // 6. Float average
+    avg := average(data[..]);
+    write("Average rounded down: ");
+    print_i32(avg as i32);
+    write("\n");
+
+    write("Suite completed successfully!\n");
+}
+
