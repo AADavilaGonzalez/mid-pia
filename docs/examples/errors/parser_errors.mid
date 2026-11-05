@@ -1,0 +1,13 @@
+// Syntactically invalid programs.
+// Each commented line reports the ParserError code expected for that case.
+
+return 1;                                // 8: statement is invalid at top level
+
+fn missing_name(: i32) { }               // 3: missing parameter identifier
+value: ;                                 // 4: missing type name
+fn main() { x := ; }                     // 2: missing expression
+fn no_semicolon() { x := 1 }             // 5: missing ';'
+fn missing_paren() { x := (1; }          // 5: missing ')'
+fn unexpected_token() { else { } }       // 1: unexpected token
+fn lexer_token() { x := @; }             // 7: lexer ERROR token
+fn unfinished() {                        // 6: unexpected end of file

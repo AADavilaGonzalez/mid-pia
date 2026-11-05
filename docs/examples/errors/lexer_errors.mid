@@ -1,0 +1,10 @@
+// Lexically invalid literals and characters.
+// Each commented line reports the LexerError code expected for that case.
+
+unexpected@token := 1;                   // 1: unexpected character '@'
+too_large: u64 = 18446744073709551616;   // 3: integer is outside the u64 range
+bad_char := 'ab';                        // 4: character literal has two characters
+bad_escape := "\q";                      // 5: unsupported escape sequence
+float_overflow := 999999999999999999999999999999999999999999.0; // 6: f32 overflow
+// 2: unterminated string literal
+unterminated := "missing closing quote
