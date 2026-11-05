@@ -1,5 +1,7 @@
 # Compilador Mid Pia Compiladores Jul-Dec 2026
 
+## Profesor: Luis Ángel Gutiérrez Rodríguez
+
 ## Integrantes
 - Esmeralda Gabriela Mendieta Gonzalez 2064574
 - Roberto Sánchez Santoyo 2177547
