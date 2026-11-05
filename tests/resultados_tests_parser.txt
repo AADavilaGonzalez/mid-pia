@@ -1,8 +1,6 @@
 Resultados de las pruebas del parser - Compilador Mid
-Fecha: 2026-11-02 23:05 CST
-Rama: main
-Commit probado: ee3020c
-Python: Python 3.14.10
+Fecha: 2026-11-05 14:32 CST
+Commit probado: 5639418
 Comando: PYTHONPATH=src uv run pytest -v tests/test_parser.py
 
 ============================= test session starts ==============================
@@ -42,8 +40,8 @@ tests/test_parser.py::test_bad_statement_becomes_error_node_and_next_statement_s
 tests/test_parser.py::test_missing_type_name_and_missing_identifier PASSED [ 84%]
 tests/test_parser.py::test_lexer_error_tokens_are_reported_by_the_parser PASSED [ 87%]
 tests/test_parser.py::test_malformed_parameter_list PASSED               [ 90%]
-tests/test_parser.py::test_diagnostics_go_to_stderr_only_and_have_positions PASSED [ 93%]
+tests/test_parser.py::test_diagnostics_are_returned_and_have_positions PASSED [ 93%]
 tests/test_parser.py::test_parser_always_terminates_on_garbage PASSED    [ 96%]
 tests/test_parser.py::test_parser_function_returns_ast_and_accepts_tokens_without_eof PASSED [100%]
 
-============================== 33 passed in 0.15s ==============================
+============================== 33 passed in 0.35s ==============================
