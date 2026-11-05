@@ -122,3 +122,7 @@ def main():
     attempt_exit(mod, args.ir, str)
 
     raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
