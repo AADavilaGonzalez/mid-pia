@@ -1,0 +1,84 @@
+I32_MAX: i32 = 2147483647;
+I32_MIN: i32 = -2147483648;
+
+fn usize_to_str(x: usize, buff: []u8) -> []u8 {
+    if buff.len == 0 { return buff; }
+    if x == 0 {
+        buff[0] = '0';
+        return buff[..1];
+    }
+
+    // Digits are produced in reverse order into aux.
+    aux: [20]u8; i: usize = 0;
+    loop {
+        if x == 0 || i >= aux.len { break; }
+        aux[i] = (x % 10) as u8 + '0';
+        x /= 10; i += 1;
+    }
+
+    // Copy them back in the right order, as many as fit in buff.
+    n: usize = 0;
+    loop {
+        if i == 0 || n >= buff.len { break; }
+        i -= 1;
+        buff[n] = aux[i];
+        n += 1;
+    }
+
+    return buff[..n];
+}
+
+fn i32_to_str(x: i32, buff: []u8) -> []u8 {
+    if buff.len == 0 { return buff; }
+    if x < 0 {
+        buff[0] = '-';
+        u: usize;
+        if x == I32_MIN {
+            u = I32_MAX as usize + 1;
+        } else {
+            u = -x as usize;
+        }
+        digits := usize_to_str(u, buff[1..]);
+        return buff[..digits.len + 1];
+    } else {
+        return usize_to_str(x as usize, buff);
+    }
+}
+
+fn parse_i32(s: []u8) -> i32 {
+    val: i32 = 0;
+    i: usize = 0;
+    loop {
+        if i >= s.len { break; }
+        c := s[i];
+        if c >= '0' && c <= '9' {
+            val = val * 10 + (c - '0') as i32;
+        } else if c != ' ' {
+            break;
+        }
+        i += 1;
+    }
+    return val;
+}
+
+fn main() {
+    discarded: bool;
+    buff: [32]u8;
+    slice := buff[..];
+
+    write("Programa que suma todos los digitos del 1 al n\n");
+    write("Introduzca n: ");
+    input := getline(slice, &discarded);
+    n := parse_i32(input);
+
+    res := 0; i := 1;
+    loop {
+    if i > n { break; }
+        res += i;
+    i += 1;
+    }
+
+    write("Resultado: ");
+    write(i32_to_str(res, slice));
+    write("\n");
+}

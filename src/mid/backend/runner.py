@@ -5,7 +5,6 @@ import sys
 from typing import BinaryIO
 
 import llvmlite.binding as llvm
-from llvmlite import ir
 
 # Initialize LLVM targets
 llvm.initialize_native_target()
@@ -36,7 +35,7 @@ class StreamContext:
             try:
                 self.out_stream.write(data)
             except TypeError:
-                self.out_stream.write(data.decode("utf-8", errors="replace"))
+                self.out_stream.write(data.decode("utf-8", errors="replace")) #pyright: ignore
             if hasattr(self.out_stream, "flush"):
                 self.out_stream.flush()
 
@@ -107,7 +106,7 @@ def get_current_context() -> StreamContext:
     if _DEFAULT_CONTEXT is None:
         in_s = getattr(sys.stdin, "buffer", sys.stdin)
         out_s = getattr(sys.stdout, "buffer", sys.stdout)
-        _DEFAULT_CONTEXT = StreamContext(in_s, out_s)
+        _DEFAULT_CONTEXT = StreamContext(in_s, out_s) #pyright: ignore
     return _DEFAULT_CONTEXT
 
 
@@ -162,12 +161,12 @@ bind_runtime_symbols()
 
 
 class JITRunner:
-    """Compiles an llvmlite.ir.Module with MCJIT for execution."""
+    """Compiles an LLVM binding module with MCJIT for execution."""
 
-    def __init__(self, module: ir.Module):
+    def __init__(self, module: llvm.ModuleRef):
         bind_runtime_symbols()
         self.ir_str = str(module)
-        self.llvm_mod = llvm.parse_assembly(self.ir_str)
+        self.llvm_mod = module
         self.llvm_mod.verify()
 
         self.target_machine = llvm.Target.from_default_triple().create_target_machine()
@@ -196,7 +195,7 @@ class JITRunner:
 
 
 def run_jit(
-    module: ir.Module,
+    module: llvm.ModuleRef,
     input_stream: BinaryIO | None = None,
     output_stream: BinaryIO | None = None,
 ) -> int:
@@ -205,7 +204,7 @@ def run_jit(
     in_s = getattr(sys.stdin, "buffer", sys.stdin) if input_stream is None else input_stream
     out_s = getattr(sys.stdout, "buffer", sys.stdout) if output_stream is None else output_stream
 
-    ctx = StreamContext(in_s, out_s)
+    ctx = StreamContext(in_s, out_s) #pyright: ignore
     prev_ctx = _CURRENT_CONTEXT
     _CURRENT_CONTEXT = ctx
     try:
@@ -216,11 +215,4 @@ def run_jit(
         _CURRENT_CONTEXT = prev_ctx
 
 
-__all__ = [
-    "JITRunner",
-    "StreamContext",
-    "run_jit",
-    "bind_runtime_symbols",
-    "get_current_context",
-    "set_current_context",
-]
+__all__ = [ "run_jit" ]

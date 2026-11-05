@@ -90,7 +90,7 @@ reset_stdio()
 # ----------------------------------------------------------------------
 
 
-def compile_ir(source: str) -> ir.Module:
+def compile_ir(source: str) -> llvm.ModuleRef:
     """Lex, parse, analyze, and generate LLVM IR module for valid Mid source."""
     tokens, lex_errors = lexer(source)
     assert lex_errors == [], f"Lexer errors: {lex_errors}"
@@ -101,7 +101,7 @@ def compile_ir(source: str) -> ir.Module:
     return codegen(tree, st)
 
 
-def jit_compile(source: str) -> tuple[ir.Module, JITRunner]:
+def jit_compile(source: str) -> tuple[llvm.ModuleRef, JITRunner]:
     mod = compile_ir(source)
     return mod, JITRunner(mod)
 
@@ -159,7 +159,7 @@ def test_ir_type_primitives_and_aggregates():
 def test_minimal_main_returns_zero():
     mod, jit = jit_compile("fn main() {}")
     ir_text = str(mod)
-    assert 'define i32 @"main"()' in ir_text
+    assert "define i32 @main()" in ir_text
     assert "__mid_init_globals" not in ir_text
     assert jit.call_main() == 0
 
@@ -194,8 +194,8 @@ def test_helper_function_add_and_linkage():
     """
     mod, jit = jit_compile(source)
     ir_text = str(mod)
-    assert 'define internal i32 @"add"' in ir_text
-    assert '@"result" = internal global i32 0' in ir_text
+    assert "define internal i32 @add" in ir_text
+    assert "@result = internal global i32 0" in ir_text
     assert jit.call_main() == 0
     assert jit.get_global("result", ctypes.c_int32) == 42
     assert jit.call("add", ctypes.c_int32, (ctypes.c_int32, 20), (ctypes.c_int32, 22)) == 42
@@ -214,8 +214,8 @@ def test_alloca_hoisting_and_parameter_mutability():
     """
     mod, jit = jit_compile(source)
     compute_fn = next(f for f in mod.functions if f.name == "compute")
-    entry_instrs = list(compute_fn.basic_blocks[0].instructions)
-    allocas = [i for i in entry_instrs if isinstance(i, ir.AllocaInstr)]
+    entry_instrs = list(next(iter(compute_fn.blocks)).instructions)
+    allocas = [i for i in entry_instrs if i.opcode == "alloca"]
     assert len(allocas) == 4
     assert entry_instrs[:4] == allocas
 
@@ -239,10 +239,10 @@ def test_forward_references_and_dynamic_globals():
     """
     mod, jit = jit_compile(source)
     ir_text = str(mod)
-    assert '@"a" = internal global i32 10' in ir_text
-    assert '@"b" = internal global i32 0' in ir_text
-    assert '@"c" = internal global i32 0' in ir_text
-    assert 'define internal void @"__mid_init_globals"()' in ir_text
+    assert "@a = internal global i32 10" in ir_text
+    assert "@b = internal global i32 0" in ir_text
+    assert "@c = internal global i32 0" in ir_text
+    assert "define internal void @__mid_init_globals()" in ir_text
 
     assert jit.call_main() == 0
     assert jit.get_global("b", ctypes.c_int32) == 20
@@ -384,11 +384,11 @@ def test_if_else_if_else_and_merge_reuse():
     mod, jit = jit_compile(source)
 
     all_ret_fn = next(f for f in mod.functions if f.name == "all_branches_return")
-    block_names = [b.name for b in all_ret_fn.basic_blocks]
+    block_names = [b.name for b in all_ret_fn.blocks]
     assert "if.merge" not in block_names
 
     no_else_fn = next(f for f in mod.functions if f.name == "if_without_else")
-    no_else_blocks = [b.name for b in no_else_fn.basic_blocks]
+    no_else_blocks = [b.name for b in no_else_fn.blocks]
     assert "if.merge" in no_else_blocks
     assert not any(name.startswith("if.next") for name in no_else_blocks)
 
@@ -467,7 +467,7 @@ def test_loops_break_continue_and_nested_loops():
     mod, jit = jit_compile(source)
 
     no_break_fn = next(f for f in mod.functions if f.name == "loop_without_break")
-    assert "loop.exit" not in [b.name for b in no_break_fn.basic_blocks]
+    assert "loop.exit" not in [b.name for b in no_break_fn.blocks]
 
     assert jit.call("count_to_ten", ctypes.c_int32) == 10
     assert jit.call("sum_evens", ctypes.c_int32, (ctypes.c_int32, 10)) == 30
@@ -496,7 +496,7 @@ def test_uninitialized_local_in_loop_resets_every_iteration():
     mod, jit = jit_compile(source)
     fn = next(f for f in mod.functions if f.name == "loop_zero_init")
     entry_allocas = [
-        ins for ins in fn.basic_blocks[0].instructions if isinstance(ins, ir.AllocaInstr)
+        ins for ins in next(iter(fn.blocks)).instructions if ins.opcode == "alloca"
     ]
     assert len(entry_allocas) == 3
     assert jit.call("loop_zero_init", ctypes.c_int32) == 0
@@ -770,10 +770,10 @@ def test_stdlib_runtime_io_linkage():
     reset_stdio(b"Mid\nABCD")
     mod, jit = jit_compile(source)
     ir_text = str(mod)
-    assert 'declare i64 @"mid_getline"(i8* %".1", i64 %".2", i8* %".3")' in ir_text
-    assert 'declare i64 @"mid_read"(i8* %".1", i64 %".2")' in ir_text
-    assert 'declare void @"mid_write"(i8* %".1", i64 %".2")' in ir_text
-    assert 'declare i8 @"mid_eof"()' in ir_text
+    assert "declare i64 @mid_getline(ptr, i64, ptr)" in ir_text
+    assert "declare i64 @mid_read(ptr, i64)" in ir_text
+    assert "declare void @mid_write(ptr, i64)" in ir_text
+    assert "declare i8 @mid_eof()" in ir_text
 
     assert jit.call_main() == 0
     assert get_written_bytes() == b"Mid!ABCD#"
@@ -838,10 +838,10 @@ def test_codegen_adversarial_audit_remediation_suite():
     # 1. Eager Pass 1 stdlib extern declarations in every module
     min_mod = compile_ir("fn main() {}")
     ir_min = str(min_mod)
-    assert 'declare i8 @"mid_eof"()' in ir_min
-    assert 'declare i64 @"mid_getline"(i8* %".1", i64 %".2", i8* %".3")' in ir_min
-    assert 'declare i64 @"mid_read"(i8* %".1", i64 %".2")' in ir_min
-    assert 'declare void @"mid_write"(i8* %".1", i64 %".2")' in ir_min
+    assert "declare i8 @mid_eof()" in ir_min
+    assert "declare i64 @mid_getline(ptr, i64, ptr)" in ir_min
+    assert "declare i64 @mid_read(ptr, i64)" in ir_min
+    assert "declare void @mid_write(ptr, i64)" in ir_min
 
     # 2 & 3. Zero-cost .len on identifiers, side-effect evaluation on calls, and complex nested short-circuit if/else
     complex_src = """
@@ -888,7 +888,7 @@ def test_codegen_adversarial_audit_remediation_suite():
     assert "load [1000 x i32]" not in ir_text
 
     # Verify call to make_arr in make_arr().len was emitted
-    assert 'call [5 x i32] @"make_arr"()' in ir_text
+    assert "call [5 x i32] @make_arr()" in ir_text
 
     # Verify JIT execution
     # Case 1: (true && true) -> res = 10; + 1000 + 5 = 1015
@@ -950,4 +950,3 @@ def test_codegen_adversarial_audit_remediation_suite():
     err_ast = AST(Program(span, [error_node]))
     with pytest.raises(AssertionError, match="ErrorNode"):
         codegen(err_ast, st)
-

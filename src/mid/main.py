@@ -1,8 +1,11 @@
-import argparse
 import sys
+import argparse
 
+from pprint import pformat
+
+from mid.frontend import analyzer, lexer, parser
+from mid.backend import codegen, optimizer, run_jit
 from mid.types.errors import Error
-
 
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Mid Compiler")
@@ -19,6 +22,11 @@ def create_parser() -> argparse.ArgumentParser:
         "--stdout",
         action="store_true",
         help="Dumps output to stdout, overrides --output flag"
+    )
+    parser.add_argument(
+        "-O", "--optimize",
+        action="store_true",
+        help="Apply optimization pass after producing initial IR. affects -i output and program execution"
     )
 
     phase_group = parser.add_mutually_exclusive_group()
@@ -42,21 +50,13 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Stop after IR codegen phase, output LLVM IR file",
     )
-    phase_group.add_argument(
-        "-c", "--obj",
-        action="store_true",
-        help="Stop after object codegen phase, ouput object file",
-    )
     return parser
 
 
 def main():
-    from pprint import pformat
-
-    from mid.backend import codegen
-    from mid.frontend import analyzer, lexer, parser
-
+    errors: list[Error] = []
     args = create_parser().parse_args()
+
     def read() -> str:
         try:
             with open(args.input, "r") as input_file:
@@ -87,19 +87,24 @@ def main():
             print(e)
             sys.exit(1)
 
-    def print_errors(errors):
+    def print_errors():
         for error in errors:
             print(error, file=sys.stderr)
 
     def attempt_exit(obj, flag: bool, fmt):
         if flag:
             output = fmt(obj)
-            if args.stdout: print(output)
-            else: write(output)
-            sys.exit(0)
+            if args.stdout:
+                print(output)
+            else:
+                write(output)
+            if errors:
+                print_errors()
+                sys.exit(1)
+            else:
+                sys.exit(0)
 
     source = read()
-    errors: list[Error] = []
 
     tokens, lexer_errors = lexer(source)
     errors.extend(lexer_errors)
@@ -111,17 +116,17 @@ def main():
 
     ast, st, analyzer_errors = analyzer(ast)
     errors.extend(analyzer_errors)
-
-    if errors:
-        print_errors(errors)
-        sys.exit(1)
-
     attempt_exit(ast, args.analyze, pformat)
 
+    if errors:
+        print_errors()
+        sys.exit(1)
+
     mod = codegen(ast, st)
+    if args.optimize:
+        mod = optimizer(mod)
     attempt_exit(mod, args.ir, str)
 
-    from mid.backend.runner import run_jit
     exit_code = run_jit(mod)
     sys.exit(exit_code)
 

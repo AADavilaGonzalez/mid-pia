@@ -19,25 +19,25 @@ EXAMPLES = Path(__file__).resolve().parent.parent / "docs" / "examples"
 def test_cli_parser_flags_and_mutual_exclusion():
     parser = create_parser()
 
-    # Valid -r / --run parsing
-    args = parser.parse_args(["test.mid", "-r"])
-    assert args.run is True
+    # Valid optimization flag parsing
+    args = parser.parse_args(["test.mid", "-O"])
+    assert args.optimize is True
     assert args.ir is False
 
-    args_long = parser.parse_args(["test.mid", "--run"])
-    assert args_long.run is True
+    args_long = parser.parse_args(["test.mid", "--optimize"])
+    assert args_long.optimize is True
 
     # Mutually exclusive phase flags should fail when combined
     with pytest.raises(SystemExit):
-        parser.parse_args(["test.mid", "-r", "-i"])
+        parser.parse_args(["test.mid", "-l", "-i"])
 
     with pytest.raises(SystemExit):
-        parser.parse_args(["test.mid", "--run", "--lex"])
+        parser.parse_args(["test.mid", "--lex", "--parse"])
 
 
 def test_cli_run_assignment(monkeypatch):
     assign_path = str(EXAMPLES / "simple" / "assignment.mid")
-    monkeypatch.setattr(sys, "argv", ["mid", assign_path, "-r"])
+    monkeypatch.setattr(sys, "argv", ["mid", assign_path])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -46,7 +46,7 @@ def test_cli_run_assignment(monkeypatch):
 
 def test_cli_run_stringify_output(monkeypatch, capsys):
     stringify_path = str(EXAMPLES / "complex" / "stringify.mid")
-    monkeypatch.setattr(sys, "argv", ["mid", stringify_path, "-r"])
+    monkeypatch.setattr(sys, "argv", ["mid", stringify_path])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -58,7 +58,7 @@ def test_cli_run_stringify_output(monkeypatch, capsys):
 
 def test_cli_run_algorithms_output(monkeypatch, capsys):
     alg_path = str(EXAMPLES / "complex" / "algorithms.mid")
-    monkeypatch.setattr(sys, "argv", ["mid", alg_path, "-r"])
+    monkeypatch.setattr(sys, "argv", ["mid", alg_path])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -75,7 +75,7 @@ def test_cli_run_algorithms_output(monkeypatch, capsys):
 
 def test_cli_run_interactive_with_input(monkeypatch, capsys):
     interactive_path = str(EXAMPLES / "complex" / "interactive.mid")
-    monkeypatch.setattr(sys, "argv", ["mid", interactive_path, "-r"])
+    monkeypatch.setattr(sys, "argv", ["mid", interactive_path])
     monkeypatch.setattr(
         sys,
         "stdin",

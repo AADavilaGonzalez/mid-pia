@@ -1,4 +1,5 @@
 from .codegen import codegen
-from .runner import JITRunner, run_jit
+from .runner import run_jit
+from .optimizer import optimizer
 
-__all__ = ["codegen", "run_jit", "JITRunner"]
+__all__ = ["codegen", "optimizer", "run_jit"]

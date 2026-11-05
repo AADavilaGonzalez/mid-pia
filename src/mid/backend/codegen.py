@@ -2,6 +2,7 @@
 
 from typing import Any
 
+import llvmlite.binding as llvm
 from llvmlite import ir
 
 from mid.types.ast import (
@@ -943,9 +944,10 @@ class CodeGenerator:
         return self.builder.call(fn_val, arg_vals)
 
 
-def codegen(ast: AST, st: SymbolTable) -> ir.Module:
-    """Translate an annotated AST and populated SymbolTable into an LLVM Module."""
-    return CodeGenerator(ast, st).generate()
+def codegen(ast: AST, st: SymbolTable) -> llvm.ModuleRef:
+    """Translate an annotated AST into a verified LLVM binding module."""
+    module = llvm.parse_assembly(str(CodeGenerator(ast, st).generate()))
+    module.verify()
+    return module
 
-
-__all__ = ["codegen", "ir_type", "CodeGenerator", "TARGET_TRIPLE", "DATA_LAYOUT"]
+__all__ = ["codegen", "ir_type", "TARGET_TRIPLE", "DATA_LAYOUT"]
